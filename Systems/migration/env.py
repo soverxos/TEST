@@ -73,8 +73,8 @@ try:
             
             imported_this_module = False
             if module_models_file.is_file():
-                # Для плагинов базовый путь импорта "modules"
-                import_target = f"modules.{module_info.path.name}.models"
+                # Для плагинов базовый путь импорта "Modules"
+                import_target = f"Modules.{module_info.path.name}.models"
                 print(f"[Alembic Env] Попытка импорта моделей из файла: {import_target}")
                 try:
                     importlib.import_module(import_target)
@@ -86,7 +86,7 @@ try:
                     print(f"[Alembic Env] > Неожиданная ошибка при импорте моделей из файла {import_target}: {type(e_f).__name__} - {e_f}")
             
             if not imported_this_module and module_models_pkg_init.is_file():
-                import_target = f"modules.{module_info.path.name}.models" 
+                import_target = f"Modules.{module_info.path.name}.models" 
                 print(f"[Alembic Env] Попытка импорта моделей из пакета: {import_target}")
                 try:
                     importlib.import_module(import_target)

@@ -25,7 +25,7 @@ from Systems.cli.utils import confirm_action
 
 # Импортируем модуль интеграций безопасности
 try:
-    from modules.security_integrations import security_integrations
+    from Modules.security_integrations import security_integrations
 
     SECURITY_INTEGRATIONS_AVAILABLE = True
 except ImportError:

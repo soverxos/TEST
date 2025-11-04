@@ -251,7 +251,7 @@ def create_project_structure():
         "Data/Config",
         "Data/Database_files",
         "Data/Logs",
-        "modules"
+        "Modules"
     ]
     
     for directory in directories:

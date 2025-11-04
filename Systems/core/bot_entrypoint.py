@@ -229,7 +229,7 @@ async def run_sdb_bot() -> int:
         num_loaded_plugins = sum(1 for mi in module_loader.get_loaded_modules_info(include_system=False, include_plugins=True) if mi.is_enabled)
 
         global_logger.info(
-            f"🧩 Загрузка плагинов из 'modules/': {num_loaded_plugins} из {num_enabled_plugins} активных успешно загружено."
+            f"🧩 Загрузка плагинов из 'Modules/': {num_loaded_plugins} из {num_enabled_plugins} активных успешно загружено."
         )
         if num_loaded_plugins < num_enabled_plugins:
             global_logger.warning("⚠️ Не все активные плагины были успешно загружены. Смотрите логи выше.")

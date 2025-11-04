@@ -146,7 +146,7 @@ class MyNewModel(SDBBaseModel):
 2. В `manifest.yaml`:
 ```yaml
 model_definitions:
-  - "modules.my_new_module.models.MyNewModel"
+  - "Modules.my_new_module.models.MyNewModel"
 ```
 
 ### Добавление новых настроек

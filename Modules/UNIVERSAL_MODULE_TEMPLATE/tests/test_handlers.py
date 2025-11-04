@@ -27,7 +27,7 @@ async def test_template_command_success():
     services = MagicMock()
     
     # Мокаем проверку разрешений
-    with patch('modules.universal_template.handlers.check_permission', return_value=True):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True):
         # Импортируем и вызываем обработчик
         from ..handlers import template_command
         await template_command(message, services)
@@ -47,7 +47,7 @@ async def test_template_command_no_permission():
     services = MagicMock()
     
     # Мокаем проверку разрешений (возвращаем False)
-    with patch('modules.universal_template.handlers.check_permission', return_value=False):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=False):
         from ..handlers import template_command
         await template_command(message, services)
         
@@ -65,7 +65,7 @@ async def test_template_admin_command_success():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=True):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True):
         from ..handlers import template_admin_command
         await template_admin_command(message, services)
         
@@ -82,7 +82,7 @@ async def test_template_admin_command_no_permission():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=False):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=False):
         from ..handlers import template_admin_command
         await template_admin_command(message, services)
         
@@ -102,7 +102,7 @@ async def test_main_menu_callback_success():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=True):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True):
         from ..handlers import main_menu_callback
         await main_menu_callback(callback, services)
         
@@ -118,7 +118,7 @@ async def test_main_menu_callback_no_permission():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=False):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=False):
         from ..handlers import main_menu_callback
         await main_menu_callback(callback, services)
         
@@ -148,8 +148,8 @@ async def test_show_stats_callback_success():
         "unique_users": 25
     }
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=True), \
-         patch('modules.universal_template.handlers.TemplateService', return_value=mock_service):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True), \
+         patch('Modules.universal_template.handlers.TemplateService', return_value=mock_service):
         
         from ..handlers import show_stats_callback
         await show_stats_callback(callback, services)
@@ -173,7 +173,7 @@ async def test_start_create_item_callback_success():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=True):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True):
         from ..handlers import start_create_item_callback
         await start_create_item_callback(callback, state, services)
         
@@ -195,7 +195,7 @@ async def test_process_title_input_valid():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.validate_input', return_value=True):
+    with patch('Modules.universal_template.handlers.validate_input', return_value=True):
         from ..handlers import process_title_input
         await process_title_input(message, state, services)
         
@@ -214,7 +214,7 @@ async def test_process_title_input_invalid():
     state = AsyncMock(spec=FSMContext)
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.validate_input', return_value=False):
+    with patch('Modules.universal_template.handlers.validate_input', return_value=False):
         from ..handlers import process_title_input
         await process_title_input(message, state, services)
         
@@ -265,8 +265,8 @@ async def test_handler_integration():
     services.modules.get_module_settings.return_value = {}
     
     # Мокаем все зависимости
-    with patch('modules.universal_template.handlers.check_permission', return_value=True), \
-         patch('modules.universal_template.handlers.log_module_action'):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True), \
+         patch('Modules.universal_template.handlers.log_module_action'):
         
         from ..handlers import template_command
         await template_command(message, services)
@@ -338,7 +338,7 @@ async def test_handler_performance():
     
     services = MagicMock()
     
-    with patch('modules.universal_template.handlers.check_permission', return_value=True):
+    with patch('Modules.universal_template.handlers.check_permission', return_value=True):
         from ..handlers import template_command
         
         start_time = time.time()

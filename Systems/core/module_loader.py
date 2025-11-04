@@ -75,7 +75,7 @@ class ModuleLoader:
         self._services: "BotServicesProvider" = services_provider
         self._core_settings: "CoreAppSettings" = self._settings.core
 
-        self.plugins_root_dir: Path = settings.core.project_data_path.parent / "modules"
+        self.plugins_root_dir: Path = settings.core.project_data_path.parent / "Modules"
         self.core_sys_modules_root_dir: Path = settings.core.project_data_path.parent / "Systems" / "core" / "sys_modules"
 
         self.user_module_settings_base_path: Path = (
@@ -485,7 +485,7 @@ class ModuleLoader:
                         f"Модуль '{plugin_name}' не будет настроен из-за предыдущей ошибки: {module_info.error}"
                     )
                     continue
-                await self._setup_single_module(module_info, dp, bot, import_base_path="modules")
+                await self._setup_single_module(module_info, dp, bot, import_base_path="Modules")
             self._logger.info("Настройка активных плагинов завершена.")
 
     def get_module_info(self, module_name: str) -> Optional[ModuleInfo]:

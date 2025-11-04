@@ -1216,12 +1216,12 @@ async def _warmup_modules():
     # Импортируем модули
     try:
         from pathlib import Path
-        modules_dir = Path("modules")
+        modules_dir = Path("Modules")
         if modules_dir.exists():
             for module_file in modules_dir.glob("*.py"):
                 if module_file.name != "__init__.py":
                     try:
-                        __import__(f"modules.{module_file.stem}")
+                        __import__(f"Modules.{module_file.stem}")
                     except Exception:
                         pass
     except Exception:

@@ -1741,7 +1741,7 @@ def get_settings_only_for_cli():
                     self.Data_path = Data_path
                     self.super_admins = core_config.get("super_admins", [])
                     self.modules_dir_name = core_config.get(
-                        "modules_dir_name", "modules"
+                        "modules_dir_name", "Modules"
                     )
                     self.sys_modules_dir_name = core_config.get(
                         "sys_modules_dir_name", "core/sys_modules"

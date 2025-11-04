@@ -148,7 +148,7 @@ SwiftDevBot/
 │   ├── user.py             # Управление пользователями
 │   ├── security.py         # Безопасность
 │   └── ...
-├── modules/                 # Пользовательские модули
+├── Modules/                 # Пользовательские модули
 │   ├── sys_status/         # Системный модуль статуса
 │   ├── example_module/     # Пример модуля
 │   └── ...
@@ -332,8 +332,8 @@ security:
 
 1. **Создайте директорию модуля**:
 ```bash
-mkdir modules/my_module
-cd modules/my_module
+mkdir Modules/my_module
+cd Modules/my_module
 ```
 
 2. **Создайте манифест модуля** (`manifest.yaml`):

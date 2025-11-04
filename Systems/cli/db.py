@@ -41,7 +41,7 @@ def _run_alembic_command(
         command = ["alembic", "-c", ALEMBIC_INI_PATH_STR] + args
 
         env = os.environ.copy()
-        # Добавляем корень проекта в PYTHONPATH, чтобы Alembic мог найти core и modules
+        # Добавляем корень проекта в PYTHONPATH, чтобы Alembic мог найти core и Modules
         # Это важно, так как env.py импортирует компоненты SDB
         existing_python_path = env.get("PYTHONPATH", "")
         project_root_str = str(PROJECT_ROOT_FROM_DB_CMD)

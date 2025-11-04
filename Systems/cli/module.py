@@ -140,7 +140,7 @@ def create_module_cmd(
         )
         raise typer.Exit(code=1)
 
-    module_dir = Path("modules") / name
+    module_dir = Path("Modules") / name
     if module_dir.exists():
         console.print(
             f"[bold red]Ошибка: Модуль '{name}' уже существует в {module_dir}.[/]"
@@ -155,7 +155,7 @@ def create_module_cmd(
     try:
         # Ветка: универсальный шаблон (копия из UNIVERSAL_MODULE_TEMPLATE)
         if template.lower() == "universal":
-            template_dir = Path("modules") / "UNIVERSAL_MODULE_TEMPLATE"
+            template_dir = Path("Modules") / "UNIVERSAL_MODULE_TEMPLATE"
             if not template_dir.exists():
                 console.print(f"[bold red]Универсальный шаблон не найден: {template_dir}[/]")
                 raise typer.Exit(code=1)
@@ -730,7 +730,7 @@ def list_modules_cmd():
 
     if not loader.available_modules:
         console.print(
-            "[yellow]Не найдено ни одного модуля (в modules/ или core/sys_modules/).[/]"
+            "[yellow]Не найдено ни одного модуля (в Modules/ или core/sys_modules/).[/]"
         )
         return
 
@@ -1001,7 +1001,7 @@ async def _clean_tables_module_async_internal(
 
     # Определяем базовый путь для импорта в зависимости от типа модуля
     # Это важно, так как model_definitions в манифесте могут быть относительными (хотя рекомендуется полные)
-    # Но для простоты, пока ожидаем полные пути типа "modules.my_plugin.models.MyTable"
+    # Но для простоты, пока ожидаем полные пути типа "Modules.my_plugin.models.MyTable"
     # или "core.sys_modules.my_sys_mod.models.SysTable"
 
     for import_path_str in model_definitions_paths:
@@ -1605,7 +1605,7 @@ async def _install_local_module(module_name: str):
                 console.print(f"[green]Найден модуль в: {module_path}[/]")
 
                 # Копируем модуль
-                target_path = PROJECT_ROOT / "modules" / module_name
+                target_path = PROJECT_ROOT / "Modules" / module_name
                 if target_path.exists():
                     if not confirm_action(
                         f"Модуль '{module_name}' уже существует. Перезаписать?"
@@ -1691,7 +1691,7 @@ async def _install_module_from_url(module_name: str, url: str):
                 return
 
             # Копируем модуль
-            target_path = PROJECT_ROOT / "modules" / module_name
+            target_path = PROJECT_ROOT / "Modules" / module_name
             if target_path.exists():
                 if not confirm_action(
                     f"Модуль '{module_name}' уже существует. Перезаписать?"
@@ -1781,7 +1781,7 @@ async def _update_single_module(module_name: str, force: bool):
     console.print(f"[cyan]Обновление модуля '{module_name}'...[/]")
 
     # Проверяем, существует ли модуль
-    module_path = PROJECT_ROOT / "modules" / module_name
+    module_path = PROJECT_ROOT / "Modules" / module_name
     if not module_path.exists():
         console.print(f"[bold red]Модуль '{module_name}' не найден.[/]")
         return False

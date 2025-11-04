@@ -124,24 +124,34 @@ async def handle_login_command(
         import os
         
         # Получаем роль пользователя
+        # Сначала проверяем, является ли пользователь супер-админом из .env
+        is_super_admin = sdb_user.telegram_id in services_provider.config.core.super_admins
+        
         primary_role = None
-        if sdb_user.roles:
+        if is_super_admin:
+            # Если пользователь в списке супер-админов, он автоматически админ
+            primary_role = "admin"
+            logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} определен как супер-админ из конфигурации.")
+        elif sdb_user.roles:
+            # Если не супер-админ, проверяем роли из БД
             role_names = [role.name for role in sdb_user.roles]
             if "Admin" in role_names:
-                primary_role = "Admin"
+                primary_role = "admin"  # lowercase для единообразия
             elif "Moderator" in role_names:
-                primary_role = "Moderator"
+                primary_role = "moderator"
             elif role_names:
-                primary_role = role_names[0]
+                primary_role = role_names[0].lower()
         
         # Создаем JWT токен с временем жизни 5 минут
         jwt_handler = get_jwt_handler()
         login_token = await jwt_handler.create_access_token(
             user_id=sdb_user.telegram_id,
-            username=sdb_user.username,
-            role=primary_role or "User",
+            username=sdb_user.username or sdb_user.full_name,
+            role=primary_role or "user",  # lowercase по умолчанию
             expires_in=timedelta(minutes=5)
         )
+        
+        logger.info(f"[{MODULE_NAME_FOR_LOG}] Создан JWT токен для пользователя {sdb_user.telegram_id} с ролью: {primary_role or 'user'}")
         
         # Получаем URL веб-панели
         # Telegram не принимает localhost в кнопках, нужно использовать реальный домен/IP
@@ -178,7 +188,7 @@ async def handle_login_command(
                         login_text = (
                             f"{hbold('🌐 Вход в веб-панель')}\n\n"
                             f"Скопируйте ссылку ниже и откройте в браузере:\n\n"
-                            f"{hcode(f'http://localhost:{web_port}/login?token={login_token}')}\n\n"
+                            f"{hcode(f'http://localhost:{web_port}/?token={login_token}')}\n\n"
                             f"{hitalic('Ссылка действительна 5 минут.')}"
                         )
                         await message.answer(login_text)
@@ -199,7 +209,8 @@ async def handle_login_command(
                 logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} запросил вход в веб-панель. Токен отправлен текстом (ошибка определения IP).")
                 return
         
-        login_url = f"{web_url}/login?token={login_token}"
+        # Use root path for better compatibility
+        login_url = f"{web_url}/?token={login_token}"
         
         # Создаем кнопку с ссылкой
         keyboard = InlineKeyboardMarkup(inline_keyboard=[

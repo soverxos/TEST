@@ -21,8 +21,8 @@ sdb_module_dependencies: []
 # === МОДЕЛИ ДАННЫХ ===
 # Модели SQLAlchemy для создания таблиц в БД
 model_definitions:
-  - "modules.universal_template.models.TemplateModel"
-  - "modules.universal_template.models.UserData"
+  - "Modules.universal_template.models.TemplateModel"
+  - "Modules.universal_template.models.UserData"
 
 # === КОМАНДЫ БОТА ===
 commands:

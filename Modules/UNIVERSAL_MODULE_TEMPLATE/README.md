@@ -239,7 +239,7 @@ python3 -m pytest modules/UNIVERSAL_MODULE_TEMPLATE/tests/test_handlers.py
 ```python
 # Пример теста
 import pytest
-from modules.universal_template.services import TemplateService
+from Modules.universal_template.services import TemplateService
 
 @pytest.mark.asyncio
 async def test_create_item():
