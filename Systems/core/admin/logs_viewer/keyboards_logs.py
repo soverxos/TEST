@@ -5,8 +5,12 @@ from loguru import logger
 from typing import List, Dict, Any
 
 from Systems.core.ui.callback_data_factories import AdminLogsViewerNavigate, AdminMainMenuNavigate
+from Systems.core.admin.keyboards_admin_common import get_admin_texts, get_back_to_admin_main_menu_button
+from typing import TYPE_CHECKING, Optional
+if TYPE_CHECKING:
+    from Systems.core.services_provider import BotServicesProvider
 
-async def get_logs_main_keyboard(log_files: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+async def get_logs_main_keyboard(log_files: List[Dict[str, Any]], services_provider: Optional['BotServicesProvider'] = None, locale: Optional[str] = None) -> InlineKeyboardMarkup:
     """Клавиатура главного меню просмотра логов"""
     builder = InlineKeyboardBuilder()
     
@@ -18,36 +22,45 @@ async def get_logs_main_keyboard(log_files: List[Dict[str, Any]]) -> InlineKeybo
             builder.button(text=display_text, callback_data=callback_data)
     
     # Кнопка возврата в админ-панель
-    builder.row(
-        InlineKeyboardButton(
-            text="⬅️ Назад в админ-панель",
-            callback_data=AdminMainMenuNavigate(target_section="main_admin").pack()
+    if services_provider:
+        builder.row(get_back_to_admin_main_menu_button(services_provider, locale))
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text="⬅️ Назад в админ-панель",
+                callback_data=AdminMainMenuNavigate(target_section="main_admin").pack()
+            )
         )
-    )
     
     builder.adjust(1)  # По одной кнопке в ряду
     return builder.as_markup()
 
-async def get_log_file_keyboard(file_name: str) -> InlineKeyboardMarkup:
+async def get_log_file_keyboard(file_name: str, services_provider: Optional['BotServicesProvider'] = None, locale: Optional[str] = None) -> InlineKeyboardMarkup:
     """Клавиатура для действий с файлом логов"""
     builder = InlineKeyboardBuilder()
     
+    # Получаем переводы
+    if services_provider:
+        admin_texts = get_admin_texts(services_provider, locale)
+    else:
+        admin_texts = {}
+    
     # Кнопка просмотра содержимого
     builder.button(
-        text="👁️ Просмотреть содержимое",
+        text=admin_texts.get("logs_viewer_view_content", "👁️ Просмотреть содержимое"),
         callback_data=AdminLogsViewerNavigate(action="view_content", payload=file_name).pack()
     )
     
     # Кнопка скачивания
     builder.button(
-        text="📥 Скачать файл",
+        text=admin_texts.get("logs_viewer_download_file", "📥 Скачать файл"),
         callback_data=AdminLogsViewerNavigate(action="download", payload=file_name).pack()
     )
     
     # Кнопка возврата к списку файлов
     builder.row(
         InlineKeyboardButton(
-            text="⬅️ Назад к списку файлов",
+            text=admin_texts.get("logs_viewer_back_to_file_list", "⬅️ Назад к списку файлов"),
             callback_data=AdminLogsViewerNavigate(action="back_to_main").pack()
         )
     )
@@ -55,26 +68,32 @@ async def get_log_file_keyboard(file_name: str) -> InlineKeyboardMarkup:
     builder.adjust(1)  # По одной кнопке в ряду
     return builder.as_markup()
 
-async def get_log_content_keyboard(file_name: str) -> InlineKeyboardMarkup:
+async def get_log_content_keyboard(file_name: str, services_provider: Optional['BotServicesProvider'] = None, locale: Optional[str] = None) -> InlineKeyboardMarkup:
     """Клавиатура для просмотра содержимого файла"""
     builder = InlineKeyboardBuilder()
     
+    # Получаем переводы
+    if services_provider:
+        admin_texts = get_admin_texts(services_provider, locale)
+    else:
+        admin_texts = {}
+    
     # Кнопка скачивания
     builder.button(
-        text="📥 Скачать файл",
+        text=admin_texts.get("logs_viewer_download_file", "📥 Скачать файл"),
         callback_data=AdminLogsViewerNavigate(action="download", payload=file_name).pack()
     )
     
     # Кнопка возврата к информации о файле
     builder.button(
-        text="⬅️ Назад к информации о файле",
+        text=admin_texts.get("logs_viewer_back_to_file_info", "⬅️ Назад к информации о файле"),
         callback_data=AdminLogsViewerNavigate(action="view_file", payload=file_name).pack()
     )
     
     # Кнопка возврата к списку файлов
     builder.row(
         InlineKeyboardButton(
-            text="⬅️ Назад к списку файлов",
+            text=admin_texts.get("logs_viewer_back_to_file_list", "⬅️ Назад к списку файлов"),
             callback_data=AdminLogsViewerNavigate(action="back_to_main").pack()
         )
     )

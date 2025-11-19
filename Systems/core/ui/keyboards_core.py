@@ -1,6 +1,6 @@
 # SwiftDevBot/core/ui/keyboards_core.py
 
-from typing import List, Dict, Optional, TYPE_CHECKING
+from typing import List, Dict, Optional, TYPE_CHECKING, Callable
 # Используем нужные типы для Reply клавиатур
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton 
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder # Добавляем ReplyKeyboardBuilder
@@ -13,7 +13,23 @@ from Systems.core.database.core_models import User as DBUser
 if TYPE_CHECKING:
     from Systems.core.services_provider import BotServicesProvider
     from Systems.core.ui.registry_ui import ModuleUIEntry
-    from sqlalchemy.ext.asyncio import AsyncSession 
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+# Глобальный кэш для translator (создается один раз)
+_translator_cache: Optional['Translator'] = None
+
+def _get_translator(services_provider: 'BotServicesProvider') -> 'Translator':
+    """Получает или создает translator для использования в клавиатурах"""
+    global _translator_cache
+    if _translator_cache is None:
+        from Systems.core.i18n.translator import Translator
+        _translator_cache = Translator(
+            locales_dir=services_provider.config.core.i18n.locales_dir,
+            domain=services_provider.config.core.i18n.domain,
+            default_locale=services_provider.config.core.i18n.default_locale,
+            available_locales=services_provider.config.core.i18n.available_locales
+        )
+    return _translator_cache 
 
 # Обновляем тексты для кнопок, чтобы они были командами или уникальными фразами
 TEXTS_CORE_KEYBOARDS_EN = {
@@ -71,10 +87,42 @@ TEXTS_CORE_KEYBOARDS_EN = {
 # --- НОВАЯ ФУНКЦИЯ ДЛЯ REPLY KEYBOARD ГЛАВНОГО МЕНЮ ---
 async def get_main_menu_reply_keyboard( 
     services_provider: 'BotServicesProvider', 
-    user_telegram_id: int
+    user_telegram_id: int,
+    locale: Optional[str] = None
 ) -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder() # Используем ReplyKeyboardBuilder
-    texts = TEXTS_CORE_KEYBOARDS_EN 
+    
+    # Получаем язык пользователя
+    if not locale:
+        # Пытаемся получить язык из БД
+        try:
+            async with services_provider.db.get_session() as session:
+                from Systems.core.database.core_models import User as DBUser
+                from sqlalchemy import select
+                result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_telegram_id))
+                db_user = result.scalar_one_or_none()
+                if db_user and db_user.preferred_language_code:
+                    locale = db_user.preferred_language_code
+        except Exception:
+            pass
+        
+        # Если язык не найден, используем дефолтный
+        if not locale:
+            locale = services_provider.config.core.i18n.default_locale
+    
+    # Получаем переводы через translator
+    translator = _get_translator(services_provider)
+    
+    # Используем переводы вместо TEXTS_CORE_KEYBOARDS_EN
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, locale, **kwargs)
+    
+    texts = {
+        "main_menu_reply_modules": t("main_menu_reply_modules"),
+        "main_menu_reply_profile": t("main_menu_reply_profile"),
+        "main_menu_reply_feedback": t("main_menu_reply_feedback"),
+        "main_menu_reply_admin_panel": t("main_menu_reply_admin_panel"),
+    } 
     
     # Основные функции - первый ряд
     builder.button(text=texts["main_menu_reply_modules"])
@@ -160,14 +208,39 @@ async def get_main_menu_inline_keyboard( # Переименовал для яс�
 
 
 async def get_modules_list_keyboard( # Остается инлайн
-    # ... (без изменений) ...
     services_provider: 'BotServicesProvider',
     user_telegram_id: int, 
     current_page: int = 1,
-    items_per_page: int = 5
+    items_per_page: int = 5,
+    locale: Optional[str] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    
+    # Получаем язык пользователя
+    if not locale:
+        try:
+            async with services_provider.db.get_session() as session:
+                from sqlalchemy import select
+                result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_telegram_id))
+                db_user = result.scalar_one_or_none()
+                if db_user and db_user.preferred_language_code:
+                    locale = db_user.preferred_language_code
+        except Exception:
+            pass
+        
+        if not locale:
+            locale = services_provider.config.core.i18n.default_locale
+    
+    translator = _get_translator(services_provider)
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, locale, **kwargs)
+    
+    texts = {
+        "modules_list_no_modules": t("modules_list_no_modules"),
+        "pagination_prev": t("pagination_prev"),
+        "pagination_next": t("pagination_next"),
+        "navigation_back_to_main": t("navigation_back_to_main"),
+    }
     
     all_module_ui_entries: List['ModuleUIEntry'] = services_provider.ui_registry.get_all_module_entries()
     
@@ -222,10 +295,25 @@ async def get_modules_list_keyboard( # Остается инлайн
     return builder.as_markup()
 
 
-def get_welcome_confirmation_keyboard() -> InlineKeyboardMarkup: # Остается инлайн
-    # ... (без изменений) ...
+def get_welcome_confirmation_keyboard(locale: Optional[str] = None, services_provider: Optional['BotServicesProvider'] = None) -> InlineKeyboardMarkup:
+    """Создает клавиатуру подтверждения регистрации с переводами"""
     builder = InlineKeyboardBuilder()
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    
+    # Если services_provider передан, используем переводы
+    if services_provider:
+        if not locale:
+            locale = services_provider.config.core.i18n.default_locale
+        translator = _get_translator(services_provider)
+        def t(key: str, **kwargs) -> str:
+            return translator.gettext(key, locale, **kwargs)
+        texts = {
+            "welcome_button_continue": t("welcome_button_continue"),
+            "welcome_button_cancel": t("welcome_button_cancel"),
+        }
+    else:
+        # Fallback на старые тексты, если services_provider не передан
+        texts = TEXTS_CORE_KEYBOARDS_EN
+    
     builder.button(
         text=texts["welcome_button_continue"],
         callback_data=CoreServiceAction(action="confirm_registration").pack()
@@ -238,12 +326,25 @@ def get_welcome_confirmation_keyboard() -> InlineKeyboardMarkup: # Остает�
     return builder.as_markup()
 
 async def get_profile_menu_keyboard( # Остается инлайн
-    # ... (без изменений) ...
     db_user: DBUser, 
-    services_provider: 'BotServicesProvider'
+    services_provider: 'BotServicesProvider',
+    locale: Optional[str] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    
+    # Получаем язык пользователя
+    if not locale:
+        locale = db_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    
+    translator = _get_translator(services_provider)
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, locale, **kwargs)
+    
+    texts = {
+        "profile_button_change_language": t("profile_button_change_language"),
+        "navigation_back_to_main": t("navigation_back_to_main"),
+    }
+    
     available_langs = services_provider.config.core.i18n.available_locales
     if len(available_langs) > 1:
         builder.button(
@@ -262,18 +363,36 @@ async def get_profile_menu_keyboard( # Остается инлайн
     return builder.as_markup()
 
 async def get_language_selection_keyboard( # Остается инлайн
-    # ... (без изменений) ...
     current_lang_code: Optional[str],
-    available_locales: List[str], 
+    available_locales: List[str],
+    services_provider: Optional['BotServicesProvider'] = None,
+    locale: Optional[str] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for lang_code in available_locales:
-        prefix = "✅ " if lang_code == current_lang_code else "▫️ "
-        display_name = lang_code.upper() 
-        builder.button(
-            text=f"{prefix}{display_name}",
-            callback_data=CoreMenuNavigate(target_menu="profile_set_lang", payload=lang_code).pack()
-        )
+    
+    # Получаем переводы для названий языков
+    if services_provider:
+        if not locale:
+            locale = current_lang_code or services_provider.config.core.i18n.default_locale
+        translator = _get_translator(services_provider)
+        
+        for lang_code in available_locales:
+            prefix = "✅ " if lang_code == current_lang_code else "▫️ "
+            lang_key = f"language_{lang_code}"
+            display_name = translator.gettext(lang_key, locale) if lang_key in translator._translations.get(locale, {}) else lang_code.upper()
+            builder.button(
+                text=f"{prefix}{display_name}",
+                callback_data=CoreMenuNavigate(target_menu="profile_set_lang", payload=lang_code).pack()
+            )
+    else:
+        # Fallback без переводов
+        for lang_code in available_locales:
+            prefix = "✅ " if lang_code == current_lang_code else "▫️ "
+            display_name = lang_code.upper() 
+            builder.button(
+                text=f"{prefix}{display_name}",
+                callback_data=CoreMenuNavigate(target_menu="profile_set_lang", payload=lang_code).pack()
+            )
     builder.adjust(1) 
     builder.row(
         InlineKeyboardButton(

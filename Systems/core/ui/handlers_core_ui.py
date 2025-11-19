@@ -31,6 +31,22 @@ if TYPE_CHECKING:
 core_ui_router = Router(name="sdb_core_ui_handlers")
 MODULE_NAME_FOR_LOG = "CoreUI"
 
+# Глобальный кэш для translator
+_translator_cache: Optional['Translator'] = None
+
+def _get_translator_for_handler(services_provider: 'BotServicesProvider') -> 'Translator':
+    """Получает или создает translator для использования в handlers"""
+    global _translator_cache
+    if _translator_cache is None:
+        from Systems.core.i18n.translator import Translator
+        _translator_cache = Translator(
+            locales_dir=services_provider.config.core.i18n.locales_dir,
+            domain=services_provider.config.core.i18n.domain,
+            default_locale=services_provider.config.core.i18n.default_locale,
+            available_locales=services_provider.config.core.i18n.available_locales
+        )
+    return _translator_cache
+
 class FSMFeedback(StatesGroup):
     waiting_for_feedback_message = State()
 
@@ -49,14 +65,34 @@ async def show_main_menu_reply(
             await state.clear()
 
     user_id = sdb_user.telegram_id
-    user_display_name = sdb_user.full_name 
+    
+    # Перезагружаем пользователя из БД для получения актуального языка
+    async with services_provider.db.get_session() as session:
+        updated_user = await session.get(DBUser, sdb_user.id)
+        if updated_user:
+            sdb_user.preferred_language_code = updated_user.preferred_language_code
+            user_display_name = updated_user.full_name
+        else:
+            user_display_name = sdb_user.full_name
+    
     logger.debug(f"[{MODULE_NAME_FOR_LOG}] User {user_id} ({user_display_name}) showing main reply menu.")
     
-    texts = TEXTS_CORE_KEYBOARDS_EN
-    default_text = f"🏠 {hbold('Главное меню SwiftDevBot')}\nС возвращением, {hbold(user_display_name)}! Выберите действие:"
-    text_to_send = text_override if text_override else default_text
+    # Получаем язык пользователя
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
     
-    keyboard = await get_main_menu_reply_keyboard(services_provider=services_provider, user_telegram_id=user_id)
+    # Получаем переводы
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
+    if text_override:
+        text_to_send = text_override
+    else:
+        default_text = f"🏠 {hbold(t('main_menu_title'))}\n{t('main_menu_greeting', user_name=user_display_name)}"
+        text_to_send = default_text
+    
+    keyboard = await get_main_menu_reply_keyboard(services_provider=services_provider, user_telegram_id=user_id, locale=user_locale)
     
     target_chat_id = message_or_query.chat.id if isinstance(message_or_query, types.Message) else message_or_query.message.chat.id # type: ignore
 
@@ -88,7 +124,15 @@ async def handle_start_command(
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_tg.id} (@{user_tg.username or 'N/A'}) вызвал /start. "
                 f"SDB_User DB ID: {sdb_user.id}. Был только что создан (в middleware): {user_was_just_created}.")
 
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    # Получаем язык пользователя
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    
+    # Получаем переводы
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
     is_owner_from_config = sdb_user.telegram_id in services_provider.config.core.super_admins
     user_display_name = sdb_user.full_name 
 
@@ -97,11 +141,101 @@ async def handle_start_command(
         await show_main_menu_reply(message, bot, services_provider, sdb_user, state=state) 
     else: 
         logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} новый. Показ приветственного сообщения.")
-        welcome_title = texts.get("welcome_message_title", "Добро пожаловать!")
-        welcome_body = texts.get("welcome_message_body", "Описание бота...")
+        welcome_title = t("welcome_message_title")
+        welcome_body = t("welcome_message_body")
         full_welcome_text = f"{hbold(welcome_title)}\n\n{welcome_body}"
-        welcome_keyboard = get_welcome_confirmation_keyboard()
+        welcome_keyboard = get_welcome_confirmation_keyboard(locale=user_locale, services_provider=services_provider)
         await message.answer(full_welcome_text, reply_markup=welcome_keyboard)
+
+
+@core_ui_router.message(Command("help"))
+async def handle_help_command(
+    message: types.Message,
+    bot: Bot,
+    services_provider: 'BotServicesProvider',
+    sdb_user: DBUser,
+):
+    """Обработчик команды /help - показывает список доступных команд."""
+    user_tg = message.from_user
+    if not user_tg:
+        return
+    
+    logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_tg.id} (@{user_tg.username or 'N/A'}) вызвал /help.")
+    
+    # Получаем язык пользователя
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
+    try:
+        from Systems.core.bot_entrypoint import CORE_COMMANDS_DESCRIPTIONS
+        
+        # Собираем базовые команды
+        help_text_parts = [
+            f"{hbold(t('help_title'))}\n",
+            f"{hbold(t('help_main_commands'))}\n"
+        ]
+        
+        # Добавляем базовые команды
+        for cmd_name, cmd_desc in CORE_COMMANDS_DESCRIPTIONS.items():
+            if cmd_name != "help":  # Не показываем саму команду help в списке
+                help_text_parts.append(f"/{cmd_name} - {cmd_desc}")
+        
+        # Собираем команды из модулей
+        module_commands = []
+        all_loaded_modules_info = services_provider.modules.get_loaded_modules_info(include_system=False, include_plugins=True)
+        
+        async with services_provider.db.get_session() as session:
+            for module_info in all_loaded_modules_info:
+                if module_info.manifest and module_info.manifest.commands:
+                    for cmd_manifest in module_info.manifest.commands:
+                        # Пропускаем админские команды, если у пользователя нет прав
+                        if cmd_manifest.admin_only:
+                            is_super_admin = sdb_user.telegram_id in services_provider.config.core.super_admins
+                            if not is_super_admin:
+                                # Проверяем, есть ли у пользователя права администратора через RBAC
+                                has_admin_permission = await services_provider.rbac.user_has_permission(
+                                    session, 
+                                    sdb_user.telegram_id, 
+                                    "core.view_admin_panel"
+                                )
+                                if not has_admin_permission:
+                                    continue
+                        
+                        cmd_name = cmd_manifest.command.lstrip("/")
+                        cmd_desc = cmd_manifest.description or "Без описания"
+                        
+                        # Избегаем дубликатов
+                        if not any(cmd["name"] == cmd_name for cmd in module_commands):
+                            module_commands.append({
+                                "name": cmd_name,
+                                "description": cmd_desc,
+                                "module": module_info.name
+                            })
+        
+        # Добавляем команды модулей, если они есть
+        if module_commands:
+            help_text_parts.append(f"\n{hbold(t('help_module_commands'))}\n")
+            for cmd in module_commands:
+                help_text_parts.append(f"/{cmd['name']} - {cmd['description']}")
+        
+        # Добавляем информацию о главном меню
+        help_text_parts.append(f"\n{hitalic(t('help_tip_menu'))}")
+        help_text_parts.append(f"{hitalic(t('help_tip_start'))}")
+        
+        help_text = "\n".join(help_text_parts)
+        
+        await message.answer(help_text)
+        logger.debug(f"[{MODULE_NAME_FOR_LOG}] Команда /help успешно обработана для пользователя {user_tg.id}.")
+        
+    except Exception as e:
+        logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка при обработке команды /help для пользователя {user_tg.id}: {e}", exc_info=True)
+        await message.answer(
+            f"{hbold('❌ Ошибка')}\n\n"
+            f"Не удалось загрузить список команд. Попробуйте позже или обратитесь к администратору."
+        )
 
 
 @core_ui_router.message(Command("login"))
@@ -282,17 +416,36 @@ async def cq_cancel_registration(
     await query.answer()
 
 
-@core_ui_router.message(F.text == TEXTS_CORE_KEYBOARDS_EN["main_menu_reply_modules"]) 
+# Обработчики текстовых сообщений для reply-кнопок
+# Используем F.text с проверкой всех возможных переводов
+@core_ui_router.message(F.text.in_([
+    "🗂 Модули и функции",  # ru
+    "🗂 Modules and Features",  # en
+    "🗂 Модулі та функції",  # ua
+]))
 async def handle_text_modules_list(message: types.Message, services_provider: 'BotServicesProvider', sdb_user: DBUser):
     logger.info(f"Пользователь {sdb_user.telegram_id} нажал reply-кнопку 'Модули'")
     await send_modules_list_message(message.chat.id, message.bot, services_provider, sdb_user, page=1)
 
-@core_ui_router.message(F.text == TEXTS_CORE_KEYBOARDS_EN["main_menu_reply_profile"])
+@core_ui_router.message(F.text.in_([
+    "👤 Мой профиль",  # ru
+    "👤 My Profile",  # en
+    "👤 Мій профіль",  # ua
+]))
 async def handle_text_profile(message: types.Message, services_provider: 'BotServicesProvider', sdb_user: DBUser):
     logger.info(f"Пользователь {sdb_user.telegram_id} нажал reply-кнопку 'Профиль'")
+    # Перезагружаем пользователя из БД для получения актуального языка
+    async with services_provider.db.get_session() as session:
+        updated_user = await session.get(DBUser, sdb_user.id)
+        if updated_user:
+            sdb_user.preferred_language_code = updated_user.preferred_language_code
     await send_profile_message(message.chat.id, message.bot, services_provider, sdb_user)
 
-@core_ui_router.message(F.text == TEXTS_CORE_KEYBOARDS_EN["main_menu_reply_feedback"], StateFilter(None))
+@core_ui_router.message(F.text.in_([
+    "✍️ Связаться с нами",  # ru
+    "✍️ Contact Us",  # en
+    "✍️ Зв'язатися з нами",  # ua
+]), StateFilter(None))
 async def handle_text_feedback_start_fsm(
     message: types.Message, 
     services_provider: 'BotServicesProvider', 
@@ -300,10 +453,14 @@ async def handle_text_feedback_start_fsm(
     state: FSMContext
 ):
     logger.info(f"Пользователь {sdb_user.telegram_id} нажал reply-кнопку 'Обратная связь', вход в FSM.")
-    text = (
-        "✍️ Пожалуйста, напишите ваше сообщение для обратной связи.\n"
-        f"{hitalic('Для отмены введите /cancel_feedback')}"
-    )
+    
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
+    text = t("feedback_request")
     await state.set_state(FSMFeedback.waiting_for_feedback_message)
     await message.answer(text) 
 
@@ -316,6 +473,13 @@ async def process_feedback_message(
 ):
     feedback_text = message.text
     user_id = sdb_user.telegram_id
+    
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
     # ИСПОЛЬЗУЕМ html.escape
     user_full_name_escaped = html.escape(sdb_user.full_name) 
     username_escaped = f"@{html.escape(sdb_user.username)}" if sdb_user.username else "(нет username)"
@@ -347,8 +511,8 @@ async def process_feedback_message(
     else:
         logger.warning("Список супер-администраторов пуст. Отзыв не будет отправлен.")
     
-    await message.reply("Спасибо за ваш отзыв! Мы его получили.")
-    await show_main_menu_reply(message, message.bot, services_provider, sdb_user, text_override="Главное меню:", state=state)
+    await message.reply(t("feedback_thanks"))
+    await show_main_menu_reply(message, message.bot, services_provider, sdb_user, text_override=t("main_menu_text"), state=state)
 
 @core_ui_router.message(Command("cancel_feedback"), StateFilter(FSMFeedback.waiting_for_feedback_message))
 async def cancel_feedback_fsm(
@@ -359,11 +523,22 @@ async def cancel_feedback_fsm(
     state: FSMContext
 ):
     logger.info(f"Пользователь {sdb_user.telegram_id} отменил ввод обратной связи.")
-    await message.reply("Ввод обратной связи отменен.")
-    await show_main_menu_reply(message, bot, services_provider, sdb_user, text_override="Главное меню:", state=state)
+    
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
+    await message.reply(t("feedback_cancelled"))
+    await show_main_menu_reply(message, bot, services_provider, sdb_user, text_override=t("main_menu_text"), state=state)
 
 
-@core_ui_router.message(F.text == TEXTS_CORE_KEYBOARDS_EN["main_menu_reply_admin_panel"])
+@core_ui_router.message(F.text.in_([
+    "🛠 Администрирование",  # ru
+    "🛠 Administration",  # en
+    "🛠 Адміністрування",  # ua
+]))
 async def handle_text_admin_panel(message: types.Message, services_provider: 'BotServicesProvider', sdb_user: DBUser, state: FSMContext): 
     logger.info(f"Пользователь {sdb_user.telegram_id} нажал reply-кнопку 'Админ-панель'")
     await state.clear() 
@@ -391,9 +566,14 @@ async def send_modules_list_message(
     message_to_edit: Optional[types.Message] = None 
 ):
     user_id = sdb_user.telegram_id
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
     items_per_page = 5
-    keyboard = await get_modules_list_keyboard(services_provider, user_id, page, items_per_page)
+    keyboard = await get_modules_list_keyboard(services_provider, user_id, page, items_per_page, locale=user_locale)
     
     num_module_buttons = 0; total_accessible_items = 0
     if keyboard.inline_keyboard: 
@@ -414,8 +594,10 @@ async def send_modules_list_message(
     total_pages = (total_accessible_items + items_per_page - 1) // items_per_page
     total_pages = max(1, total_pages)
 
-    if num_module_buttons == 0 and page == 1: text = texts["modules_list_no_modules"]
-    else: text = texts["modules_list_title_template"].format(current_page=page, total_pages=total_pages)
+    if num_module_buttons == 0 and page == 1: 
+        text = t("modules_list_no_modules")
+    else: 
+        text = t("modules_list_title_template", current_page=page, total_pages=total_pages)
     
     if message_to_edit: 
         try:
@@ -440,21 +622,42 @@ async def send_profile_message(
     sdb_user: DBUser,
     message_to_edit: Optional[types.Message] = None
 ):
-    texts = TEXTS_CORE_KEYBOARDS_EN
-    reg_date_str = sdb_user.created_at.strftime('%d.%m.%Y %H:%M') if sdb_user.created_at else texts["profile_no_reg_date"]
-    username_str = f"@{sdb_user.username}" if sdb_user.username else texts["profile_no_username"] 
+    # Перезагружаем пользователя из БД для получения актуального языка
+    async with services_provider.db.get_session() as session:
+        updated_user = await session.get(DBUser, sdb_user.id)
+        if updated_user:
+            sdb_user.preferred_language_code = updated_user.preferred_language_code
+            # Обновляем также другие поля для отображения
+            if not sdb_user.created_at and updated_user.created_at:
+                sdb_user.created_at = updated_user.created_at
+            if not sdb_user.username and updated_user.username:
+                sdb_user.username = updated_user.username
+            if not sdb_user.full_name and updated_user.full_name:
+                sdb_user.full_name = updated_user.full_name
+    
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
+    reg_date_str = sdb_user.created_at.strftime('%d.%m.%Y %H:%M') if sdb_user.created_at else t("profile_no_reg_date")
+    username_str = f"@{sdb_user.username}" if sdb_user.username else t("profile_no_username")
     current_lang = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
-    lang_display_name = current_lang.upper()
+    
+    # Получаем название языка из переводов
+    lang_key = f"language_{current_lang}"
+    lang_display_name = t(lang_key)
 
-    profile_text = texts["profile_info_template"].format(
-        user_id=hcode(str(sdb_user.telegram_id)),
-        full_name=hbold(sdb_user.full_name),
-        username=username_str,
+    profile_text = t("profile_info_template",
+        user_id=str(sdb_user.telegram_id),
+        full_name=sdb_user.full_name,
+        username=username_str.replace("@", ""),
         registration_date=reg_date_str,
         current_language=lang_display_name
     )
-    final_text = f"{hbold(texts['profile_title'])}\n\n{profile_text}"
-    keyboard = await get_profile_menu_keyboard(sdb_user, services_provider)
+    final_text = f"{hbold(t('profile_title'))}\n\n{profile_text}"
+    keyboard = await get_profile_menu_keyboard(sdb_user, services_provider, locale=user_locale)
     
     if message_to_edit:
         try:
@@ -510,14 +713,19 @@ async def cq_profile_show_language_list(
     user_id = sdb_user.telegram_id
     logger.debug(f"[{MODULE_NAME_FOR_LOG}] User {user_id} requested language selection list.")
     
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
     i18n_settings = services_provider.config.core.i18n
     
     current_lang = sdb_user.preferred_language_code or i18n_settings.default_locale
     available_langs = i18n_settings.available_locales
     
-    text = texts.get("profile_select_language_title", "Выберите язык:")
-    keyboard = await get_language_selection_keyboard(current_lang, available_langs)
+    text = t("profile_select_language_title")
+    keyboard = await get_language_selection_keyboard(current_lang, available_langs, services_provider=services_provider, locale=user_locale)
     
     if query.message:
         try:
@@ -554,26 +762,75 @@ async def cq_profile_set_language(
     logger.info(f"[{MODULE_NAME_FOR_LOG}] User {user_id} устанавливает язык: {new_lang_code}")
     
     user_service = services_provider.user_service 
+    language_updated = False
     async with services_provider.db.get_session() as session: 
         user_in_session = await session.get(DBUser, sdb_user.id) 
         if user_in_session:
+            old_lang = user_in_session.preferred_language_code
+            logger.debug(f"[{MODULE_NAME_FOR_LOG}] Текущий язык пользователя {user_id} в БД: {old_lang}, новый: {new_lang_code}")
+            
             if await user_service.update_user_language(user_in_session, new_lang_code, session):
                 try:
                     await session.commit()
-                    sdb_user.preferred_language_code = new_lang_code 
+                    # Обновляем объект из БД после commit
+                    await session.refresh(user_in_session)
+                    saved_lang = user_in_session.preferred_language_code
+                    logger.info(f"[{MODULE_NAME_FOR_LOG}] После commit язык пользователя {user_id} в БД: {saved_lang}")
                     
-                    logger.success(f"[{MODULE_NAME_FOR_LOG}] Язык для пользователя {user_id} успешно изменен на {new_lang_code} в БД.")
-                    await query.answer(f"Language changed to {new_lang_code.upper()}", show_alert=False)
+                    # Обновляем объект sdb_user
+                    sdb_user.preferred_language_code = saved_lang
+                    language_updated = True
+                    
+                    logger.success(f"[{MODULE_NAME_FOR_LOG}] Язык для пользователя {user_id} успешно изменен на {new_lang_code} в БД (подтверждено: {saved_lang}).")
+                    
+                    # Получаем переводы для сообщения об успехе
+                    user_locale = new_lang_code
+                    translator = _get_translator_for_handler(services_provider)
+                    def t(key: str, **kwargs) -> str:
+                        return translator.gettext(key, user_locale, **kwargs)
+                    
+                    await query.answer(t("profile_language_changed").format(lang=new_lang_code.upper()), show_alert=False)
                 except Exception as e_commit:
                     await session.rollback()
                     logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка commit при смене языка для {user_id}: {e_commit}", exc_info=True)
-                    await query.answer("Ошибка сохранения языка.", show_alert=True)
+                    
+                    # Получаем переводы для сообщения об ошибке
+                    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+                    translator = _get_translator_for_handler(services_provider)
+                    def t(key: str, **kwargs) -> str:
+                        return translator.gettext(key, user_locale, **kwargs)
+                    
+                    await query.answer(t("profile_language_change_error"), show_alert=True)
             else:
-                await query.answer(f"Язык уже установлен на {new_lang_code.upper()}.", show_alert=False)
+                # Язык уже установлен
+                logger.debug(f"[{MODULE_NAME_FOR_LOG}] Язык пользователя {user_id} уже установлен на {new_lang_code}")
+                user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+                translator = _get_translator_for_handler(services_provider)
+                def t(key: str, **kwargs) -> str:
+                    return translator.gettext(key, user_locale, **kwargs)
+                
+                await query.answer(t("profile_language_already_set").format(lang=new_lang_code.upper()), show_alert=False)
         else: 
-            await query.answer("Ошибка: пользователь не найден для обновления языка.", show_alert=True)
+            logger.error(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} (DB ID: {sdb_user.id}) не найден в БД для обновления языка")
+            user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+            translator = _get_translator_for_handler(services_provider)
+            def t(key: str, **kwargs) -> str:
+                return translator.gettext(key, user_locale, **kwargs)
             
-    if query.message:
+            await query.answer(t("profile_language_user_not_found"), show_alert=True)
+    
+    # Обновляем профиль с новым языком только если язык был успешно изменен
+    if query.message and language_updated:
+        # Перезагружаем пользователя из БД для гарантии актуальных данных
+        async with services_provider.db.get_session() as session:
+            updated_user = await session.get(DBUser, sdb_user.id)
+            if updated_user:
+                final_lang = updated_user.preferred_language_code
+                logger.debug(f"[{MODULE_NAME_FOR_LOG}] Финальная проверка: язык пользователя {user_id} в БД после перезагрузки: {final_lang}")
+                sdb_user.preferred_language_code = final_lang
+        await send_profile_message(query.message.chat.id, bot, services_provider, sdb_user, message_to_edit=query.message)
+    elif query.message:
+        # Если язык не был изменен, просто обновляем профиль с текущими данными
         await send_profile_message(query.message.chat.id, bot, services_provider, sdb_user, message_to_edit=query.message)
     
 

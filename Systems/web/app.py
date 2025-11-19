@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Dict
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -35,6 +35,9 @@ def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
         description="Futuristic Liquid Glass Dashboard for SwiftDevBot",
         version="0.2.0",
         debug=debug,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
     )
     
     # CORS middleware
@@ -63,11 +66,41 @@ def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
     @app.get("/api/health")
     async def health_check():
         """Health check endpoint."""
+        if sdb_services:
+            from Systems.core.monitoring.health import HealthChecker
+            health_checker = HealthChecker(sdb_services)
+            return await health_checker.get_health_summary()
         return {
             "status": "healthy",
             "service": "SwiftDevBot Dashboard",
             "version": "0.2.0"
         }
+    
+    @app.get("/api/health/detailed")
+    async def health_check_detailed():
+        """Detailed health check endpoint."""
+        if sdb_services:
+            from Systems.core.monitoring.health import HealthChecker
+            health_checker = HealthChecker(sdb_services)
+            return await health_checker.check_all()
+        return {
+            "status": "healthy",
+            "service": "SwiftDevBot Dashboard",
+            "version": "0.2.0",
+            "checks": {}
+        }
+    
+    @app.get("/metrics")
+    async def metrics():
+        """Prometheus metrics endpoint."""
+        if sdb_services:
+            from Systems.core.monitoring.metrics import get_metrics_collector
+            metrics_collector = get_metrics_collector()
+            return Response(
+                content=metrics_collector.get_prometheus_format(),
+                media_type="text/plain"
+            )
+        return Response(content="# No metrics available\n", media_type="text/plain")
     
     @app.get("/api/stats")
     async def get_stats():

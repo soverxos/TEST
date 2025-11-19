@@ -32,26 +32,41 @@ async def cq_admin_logs_view_start(
     admin_user_id = query.from_user.id
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} запросил просмотр логов.")
     
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     # Получаем список файлов логов
     log_files = await _get_available_log_files(services_provider)
     
-    text = "📋 **Просмотр логов системы**\n\n"
+    text = f"📄 **{admin_texts.get('logs_viewer_title', 'Просмотр логов системы')}**\n\n"
     if log_files:
-        text += f"Найдено файлов логов: {len(log_files)}\n"
-        text += "Выберите файл для просмотра:"
+        text += f"{admin_texts.get('logs_viewer_files_found', 'Найдено файлов логов')}: {len(log_files)}\n"
+        text += admin_texts.get('logs_viewer_select_file', 'Выберите файл для просмотра:')
     else:
-        text += "❌ Файлы логов не найдены"
+        text += admin_texts.get('logs_viewer_no_log_files', '❌ Файлы логов не найдены')
     
-    keyboard = await get_logs_main_keyboard(log_files)
+    keyboard = await get_logs_main_keyboard(log_files, services_provider, user_locale)
     
     if query.message:
         try:
-            await query.message.edit_text(text, reply_markup=keyboard)
+            await query.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Ошибка при обновлении сообщения логов: {e}")
-            await query.answer("Ошибка при обновлении интерфейса", show_alert=True)
+            await query.answer(admin_texts["admin_error_display"], show_alert=True)
     else:
-        await query.message.answer(text, reply_markup=keyboard)
+        await query.message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
     
     await query.answer()
 
@@ -64,29 +79,44 @@ async def cq_admin_logs_view_file(
     admin_user_id = query.from_user.id
     file_name = callback_data.payload
     
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} запросил просмотр файла {file_name}")
     
     # Получаем информацию о файле
     log_file_info = await _get_log_file_info(services_provider, file_name)
     
     if not log_file_info:
-        await query.answer("Файл не найден", show_alert=True)
+        await query.answer(admin_texts.get("logs_viewer_file_not_found", "Файл не найден"), show_alert=True)
         return
     
-    text = f"📄 **Файл логов: {file_name}**\n\n"
-    text += f"📊 Размер: {log_file_info['size_formatted']}\n"
-    text += f"📅 Изменен: {log_file_info['modified_formatted']}\n"
-    text += f"📝 Строк: {log_file_info['lines_count']}\n\n"
-    text += "Выберите действие:"
+    text = f"📄 **{admin_texts.get('logs_viewer_file_details_title', 'Файл логов')}: {file_name}**\n\n"
+    text += f"📊 {admin_texts.get('logs_viewer_file_size', 'Размер')}: {log_file_info['size_formatted']}\n"
+    text += f"📅 {admin_texts.get('logs_viewer_file_last_modified', 'Изменен')}: {log_file_info['modified_formatted']}\n"
+    text += f"📝 {admin_texts.get('logs_viewer_file_lines', 'Строк')}: {log_file_info['lines_count']}\n\n"
+    text += admin_texts.get('logs_viewer_select_action', 'Выберите действие:')
     
-    keyboard = await get_log_file_keyboard(file_name)
+    keyboard = await get_log_file_keyboard(file_name, services_provider, user_locale)
     
     if query.message:
         try:
-            await query.message.edit_text(text, reply_markup=keyboard)
+            await query.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Ошибка при обновлении сообщения файла логов: {e}")
-            await query.answer("Ошибка при обновлении интерфейса", show_alert=True)
+            await query.answer(admin_texts["admin_error_display"], show_alert=True)
     
     await query.answer()
 
@@ -100,19 +130,34 @@ async def cq_admin_logs_view_content(
     admin_user_id = query.from_user.id
     file_name = callback_data.payload
     
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} запросил содержимое файла {file_name}")
     
     # Получаем содержимое файла (последние 50 строк)
     log_content = await _get_log_file_content(services_provider, file_name, lines_count=50)
     
     if not log_content:
-        await query.answer("Не удалось прочитать файл", show_alert=True)
+        await query.answer(admin_texts.get("logs_viewer_error_reading_file", "Не удалось прочитать файл"), show_alert=True)
         return
     
-    text = f"📄 **Содержимое файла: {file_name}**\n\n"
+    text = f"📄 **{admin_texts.get('logs_viewer_file_content_title', 'Содержимое файла')}: {file_name}**\n\n"
     text += f"```\n{log_content}\n```"
     
-    keyboard = await get_log_content_keyboard(file_name)
+    keyboard = await get_log_content_keyboard(file_name, services_provider, user_locale)
     
     if query.message:
         try:
@@ -134,13 +179,28 @@ async def cq_admin_logs_download(
     admin_user_id = query.from_user.id
     file_name = callback_data.payload
     
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} запросил скачивание файла {file_name}")
     
     # Получаем путь к файлу
     log_file_path = await _get_log_file_path(services_provider, file_name)
     
     if not log_file_path or not log_file_path.exists():
-        await query.answer("Файл не найден", show_alert=True)
+        await query.answer(admin_texts.get("logs_viewer_file_not_found", "Файл не найден"), show_alert=True)
         return
     
     try:
@@ -150,12 +210,12 @@ async def cq_admin_logs_download(
                 log_file_path.read_bytes(),
                 filename=file_name
             ),
-            caption=f"📄 Файл логов: {file_name}"
+            caption=f"📄 {admin_texts.get('logs_viewer_file_details_title', 'Файл логов')}: {file_name}"
         )
-        await query.answer("Файл отправлен")
+        await query.answer(admin_texts.get("logs_viewer_file_sent", "Файл отправлен"))
     except Exception as e:
         logger.error(f"Ошибка при отправке файла логов: {e}")
-        await query.answer("Ошибка при отправке файла", show_alert=True)
+        await query.answer(admin_texts.get("logs_viewer_error_downloading_file", "Ошибка при отправке файла"), show_alert=True)
 
 @logs_viewer_router.callback_query(AdminLogsViewerNavigate.filter(F.action == "back_to_main"))
 async def cq_admin_logs_back_to_main(
@@ -163,26 +223,42 @@ async def cq_admin_logs_back_to_main(
     services_provider: 'BotServicesProvider'
 ):
     admin_user_id = query.from_user.id
+    
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} вернулся к главному меню логов")
     
     # Повторяем логику из cq_admin_logs_view_start
     log_files = await _get_available_log_files(services_provider)
     
-    text = "📋 **Просмотр логов системы**\n\n"
+    text = f"📄 **{admin_texts.get('logs_viewer_title', 'Просмотр логов системы')}**\n\n"
     if log_files:
-        text += f"Найдено файлов логов: {len(log_files)}\n"
-        text += "Выберите файл для просмотра:"
+        text += f"{admin_texts.get('logs_viewer_files_found', 'Найдено файлов логов')}: {len(log_files)}\n"
+        text += admin_texts.get('logs_viewer_select_file', 'Выберите файл для просмотра:')
     else:
-        text += "❌ Файлы логов не найдены"
+        text += admin_texts.get('logs_viewer_no_log_files', '❌ Файлы логов не найдены')
     
-    keyboard = await get_logs_main_keyboard(log_files)
+    keyboard = await get_logs_main_keyboard(log_files, services_provider, user_locale)
     
     if query.message:
         try:
-            await query.message.edit_text(text, reply_markup=keyboard)
+            await query.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
         except Exception as e:
             logger.error(f"Ошибка при возврате к главному меню логов: {e}")
-            await query.answer("Ошибка при обновлении интерфейса", show_alert=True)
+            await query.answer(admin_texts["admin_error_display"], show_alert=True)
     
     await query.answer()
 

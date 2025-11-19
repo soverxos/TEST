@@ -25,11 +25,28 @@ MODULE_NAME_FOR_LOG = "AdminEntry"
 async def send_admin_main_menu(message_or_query: Union[types.Message, types.CallbackQuery], services_provider: 'BotServicesProvider'):
     user_id = message_or_query.from_user.id 
     
-    text = (f"🛠 {hbold('Административная панель SwiftDevBot')}\n"
-            f"Выберите раздел для управления:")
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    # Получаем переводы
+    from Systems.core.admin.keyboards_admin_common import get_admin_texts
+    texts = get_admin_texts(services_provider, user_locale)
+    
+    text = (f"🛠 {hbold(texts.get('admin_panel_title', 'Административная панель SwiftDevBot'))}\n"
+            f"{texts.get('admin_panel_select_section', 'Выберите раздел для управления:')}")
     
     async with services_provider.db.get_session() as session: 
-        keyboard = await get_admin_main_menu_keyboard(services_provider, user_id, session)
+        keyboard = await get_admin_main_menu_keyboard(services_provider, user_id, session, locale=user_locale)
 
     if isinstance(message_or_query, types.Message):
         await message_or_query.answer(text, reply_markup=keyboard)
@@ -53,13 +70,13 @@ async def send_admin_main_menu(message_or_query: Union[types.Message, types.Call
                         await message_or_query.answer()
                     except Exception as e_send_new:
                         logger.error(f"[{MODULE_NAME_FOR_LOG}] Не удалось отправить новое сообщение после ошибки редактирования: {e_send_new}")
-                        await message_or_query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+                        await message_or_query.answer(texts["error_general"], show_alert=True)
                 else: 
-                    await message_or_query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+                    await message_or_query.answer(texts["error_general"], show_alert=True)
         except Exception as e:
             logger.warning(f"[{MODULE_NAME_FOR_LOG}] Непредвиденная ошибка при отправке меню админ-панели: {e}", exc_info=True)
             if isinstance(message_or_query, types.CallbackQuery):
-                await message_or_query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+                await message_or_query.answer(texts["error_general"], show_alert=True)
 
 
 @admin_entry_router.message(Command("admin_cp"))
@@ -86,9 +103,25 @@ async def cmd_admin_panel_main(message: types.Message, services_provider: 'BotSe
         await send_admin_main_menu(message, services_provider)
     else:
         logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} (без прав) попытался войти в админ-панель через команду /admin_cp.")
+        
+        # Получаем язык пользователя
+        user_locale = services_provider.config.core.i18n.default_locale
+        try:
+            async with services_provider.db.get_session() as session:
+                from Systems.core.database.core_models import User as DBUser
+                from sqlalchemy import select
+                result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_id))
+                db_user = result.scalar_one_or_none()
+                if db_user and db_user.preferred_language_code:
+                    user_locale = db_user.preferred_language_code
+        except Exception:
+            pass
+        
+        from Systems.core.admin.keyboards_admin_common import get_admin_texts
+        texts = get_admin_texts(services_provider, user_locale)
+        
         await message.answer(
-            "🚫 У вас нет прав доступа к административной панели.\n\n"
-            "Если вы считаете, что это ошибка, обратитесь к администратору бота.",
+            texts.get("admin_no_access", "🚫 У вас нет прав доступа к административной панели.\n\nЕсли вы считаете, что это ошибка, обратитесь к администратору бота."),
             show_alert=False
         )
 
@@ -135,4 +168,20 @@ async def cq_admin_main_to_sys_info(
 
 @admin_entry_router.callback_query(AdminMainMenuNavigate.filter(F.target_section == "modules"))
 async def cq_admin_main_to_modules(query: types.CallbackQuery, services_provider: 'BotServicesProvider'):
-    await query.answer("Раздел 'Управление модулями' в разработке.", show_alert=True)
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == query.from_user.id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    from Systems.core.admin.keyboards_admin_common import get_admin_texts
+    texts = get_admin_texts(services_provider, user_locale)
+    
+    await query.answer(texts.get("admin_modules_in_development", "Раздел 'Управление модулями' в разработке."), show_alert=True)

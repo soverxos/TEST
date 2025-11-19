@@ -32,6 +32,7 @@ ROOT_CONFIG_TEMPLATE_FILENAME = "config.yaml"
 STRUCTURED_LOGS_ROOT_DIR_NAME = "Logs" 
 
 CLI_MODE = os.environ.get("SDB_CLI_MODE", "false").lower() == "true"
+VERBOSE_MODE = os.environ.get("SDB_VERBOSE", "false").lower() == "true"
 env_file_path_for_dotenv = None
 BOT_TOKEN_FROM_DOTENV: Optional[str] = None
 if not CLI_MODE:
@@ -105,9 +106,9 @@ class ModuleRepoSettings(BaseModel):
 
 class I18nSettings(BaseModel):
     locales_dir: Path = Field(default=PROJECT_ROOT_DIR / "Systems" / "locales", description="Путь к директории с файлами переводов.")
-    domain: str = Field(default="bot", description="Имя домена для gettext.")
-    default_locale: str = Field(default="en", description="Язык по умолчанию.")
-    available_locales: List[str] = Field(default_factory=lambda: ["en", "ua"], description="Список доступных языков.")
+    domain: str = Field(default="bot", description="Имя домена для переводов.")
+    default_locale: str = Field(default="ru", description="Язык по умолчанию.")
+    available_locales: List[str] = Field(default_factory=lambda: ["ru", "en", "ua"], description="Список доступных языков.")
 
 class CoreAppSettings(BaseModel):
     project_data_path: Path = Field(
@@ -196,7 +197,9 @@ def load_app_settings() -> AppSettings:
     if _loaded_settings_cache is not None:
         return _loaded_settings_cache
 
-    global_logger.debug(f"Инициализация загрузки конфигурации SDB. Корень проекта: {PROJECT_ROOT_DIR}")
+    # DEBUG логи показываем только в verbose режиме
+    if VERBOSE_MODE:
+        global_logger.debug(f"Инициализация загрузки конфигурации SDB. Корень проекта: {PROJECT_ROOT_DIR}")
     
     env_s = EnvironmentSettings()
     
@@ -224,10 +227,14 @@ def load_app_settings() -> AppSettings:
     if user_config_file_path.is_file():
         try:
             with open(user_config_file_path, 'r', encoding='utf-8') as f: yaml_data = yaml.safe_load(f) or {}
-            global_logger.info(f"Загружена конфигурация из пользовательского YAML: {user_config_file_path}")
+            # INFO логи о загрузке конфигурации показываем только в verbose режиме
+            if VERBOSE_MODE:
+                global_logger.info(f"Загружена конфигурация из пользовательского YAML: {user_config_file_path}")
         except Exception as e_yaml: global_logger.error(f"Ошибка загрузки YAML из {user_config_file_path}: {e_yaml}.")
     else:
-        global_logger.info(f"Пользовательский YAML конфиг {user_config_file_path} не найден. Используются дефолты и .env.")
+        # INFO логи о конфигурации показываем только в verbose режиме
+        if VERBOSE_MODE:
+            global_logger.info(f"Пользовательский YAML конфиг {user_config_file_path} не найден. Используются дефолты и .env.")
 
     tg_token_from_yaml = yaml_data.get("telegram", {}).get("token")
     final_tg_token = BOT_TOKEN_FROM_DOTENV or tg_token_from_yaml
@@ -367,28 +374,52 @@ def load_app_settings() -> AppSettings:
 
     if not _loguru_console_configured_flag:
         try:
-            if hasattr(global_logger, '_core') and global_logger._core.handlers:
-                for handler_id_to_remove in list(global_logger._core.handlers.keys()):
-                    try: global_logger.remove(handler_id_to_remove)
-                    except ValueError: pass
+            # Проверяем, есть ли уже настроенный handler (например, из sdb.py)
+            has_existing_handler = (
+                hasattr(global_logger, '_core') and 
+                global_logger._core.handlers and 
+                len(global_logger._core.handlers) > 0
+            )
             
-            log_format_console = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
-                                  "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+            # Используем глобальную переменную VERBOSE_MODE
+            if VERBOSE_MODE:
+                # Подробный формат с модулем, функцией и строкой
+                log_format_console = ("<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | "
+                                      "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>")
+                # Удаляем все существующие handlers только в verbose режиме
+                if has_existing_handler:
+                    for handler_id_to_remove in list(global_logger._core.handlers.keys()):
+                        try: global_logger.remove(handler_id_to_remove)
+                        except ValueError: pass
+            else:
+                # Простой формат: только время и сообщение
+                log_format_console = "<green>{time:HH:mm:ss}</green> <level>{message}</level>"
+                # В простом режиме не удаляем handlers, если они уже настроены (например, из sdb.py)
+                # Если handler уже настроен, просто используем его
             
-            console_log_level_str = final_settings.core.log_level.upper()
-            
-            cli_debug_env_var = os.environ.get("SDB_CLI_DEBUG_MODE_FOR_LOGGING", "false").lower()
-            if cli_debug_env_var == "true":
-                console_log_level_str = "DEBUG"
-                global_logger.info("Loguru (app_settings): Уровень консольного лога принудительно DEBUG из-за SDB_CLI_DEBUG_MODE_FOR_LOGGING.")
+            # Добавляем handler только если его еще нет (в простом режиме) или всегда (в verbose режиме)
+            if VERBOSE_MODE or not has_existing_handler:
+                console_log_level_str = final_settings.core.log_level.upper()
+                
+                cli_debug_env_var = os.environ.get("SDB_CLI_DEBUG_MODE_FOR_LOGGING", "false").lower()
+                if cli_debug_env_var == "true":
+                    console_log_level_str = "DEBUG"
+                    if not VERBOSE_MODE:
+                        global_logger.info("Loguru (app_settings): Уровень консольного лога принудительно DEBUG из-за SDB_CLI_DEBUG_MODE_FOR_LOGGING.")
 
-            global_logger.add(sys.stderr, level=console_log_level_str, format=log_format_console, colorize=True)
-            global_logger.info(f"Loguru (app_settings): Консольный логгер настроен. Уровень: {console_log_level_str}")
+                global_logger.add(sys.stderr, level=console_log_level_str, format=log_format_console, colorize=True)
+                if VERBOSE_MODE:
+                    global_logger.info(f"Loguru (app_settings): Консольный логгер настроен (verbose mode). Уровень: {console_log_level_str}")
             _loguru_console_configured_flag = True
         except Exception as e_log_setup_console:
             print(f"CRITICAL ERROR in app_settings during Loguru console setup: {e_log_setup_console}", file=sys.stderr)
 
-    global_logger.success("Настройки SDB успешно загружены и провалидированы!")
+    # Сообщение об успешной загрузке показываем всегда, но в простом формате (если не verbose)
+    if VERBOSE_MODE:
+        global_logger.success("Настройки SDB успешно загружены и провалидированы!")
+    else:
+        # В простом режиме используем info вместо success, чтобы не было лишних символов
+        global_logger.info("Настройки SDB успешно загружены и провалидированы!")
     _loaded_settings_cache = final_settings
     return final_settings
 

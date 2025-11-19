@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger 
 
 from Systems.core.ui.callback_data_factories import AdminRolesPanelNavigate
-from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_back_to_admin_main_menu_button
+from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_back_to_admin_main_menu_button, get_admin_texts
 from Systems.core.rbac.service import (
     PERMISSION_CORE_ROLES_CREATE, 
     PERMISSION_CORE_ROLES_EDIT, 
@@ -20,6 +20,31 @@ if TYPE_CHECKING:
     from Systems.core.database.core_models import Role as DBRole, Permission as DBPermission
     from aiogram import types as AiogramTypes # Используем псевдоним, чтобы не путать с types в аннотациях
 
+def get_roles_mgmt_texts(services_provider: 'BotServicesProvider', locale: Optional[str] = None) -> dict:
+    """Получает словарь переводов для управления ролями"""
+    if not locale:
+        locale = services_provider.config.core.i18n.default_locale
+    
+    from Systems.core.admin.keyboards_admin_common import _get_admin_translator
+    translator = _get_admin_translator(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, locale, **kwargs)
+    
+    return {
+        "role_list_title": t("admin_role_list_title"),
+        "role_list_select_action": t("admin_role_list_select_action"),
+        "role_list_no_roles": t("admin_role_list_no_roles"),
+        "role_details_title": t("admin_role_details_title"),
+        "role_action_edit_permissions": t("admin_role_action_edit_permissions"),
+        "role_action_edit_role": t("admin_role_action_edit_role"),
+        "role_action_delete_role": t("admin_role_action_delete_role"),
+        "back_to_roles_list": t("admin_back_to_roles_list"),
+        "edit_permissions_for_role": t("admin_edit_permissions_for_role"),
+        "role_action_create_role": t("admin_role_action_create_role"),
+    }
+
+# Старый словарь для обратной совместимости (deprecated)
 ROLES_MGMT_TEXTS = {
     "role_list_title": "🛡️ Управление ролями",
     "role_list_select_action": "Выберите роль для просмотра или управления:",
@@ -38,10 +63,20 @@ async def get_admin_roles_list_keyboard_local(
     all_roles: List['DBRole'],
     services: Optional['BotServicesProvider'] = None, 
     user_tg_id: Optional[int] = None,          
-    session: Optional['AsyncSession'] = None    
+    session: Optional['AsyncSession'] = None,
+    locale: Optional[str] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    texts = ROLES_MGMT_TEXTS
+    
+    # Получаем переводы
+    if services:
+        roles_texts = get_roles_mgmt_texts(services, locale)
+        admin_texts = get_admin_texts(services, locale)
+    else:
+        roles_texts = ROLES_MGMT_TEXTS
+        admin_texts = ADMIN_COMMON_TEXTS
+    
+    texts = roles_texts
 
     logger.debug(f"[AdminRolesKeyboards] Генерация списка ролей. Всего ролей: {len(all_roles)}")
     if not all_roles:
@@ -79,7 +114,7 @@ async def get_admin_roles_list_keyboard_local(
             )
             logger.debug(f"[AdminRolesKeyboards] Добавлена кнопка 'создать роль', callback: {cb_create_data}")
 
-    builder.row(get_back_to_admin_main_menu_button())
+    builder.row(get_back_to_admin_main_menu_button(services, locale))
     return builder.as_markup()
 
 
@@ -87,10 +122,30 @@ async def get_admin_role_details_keyboard_local(
     target_role: 'DBRole',
     services: 'BotServicesProvider',
     current_admin_tg_id: int,
-    session: 'AsyncSession'
+    session: 'AsyncSession',
+    locale: Optional[str] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    texts = ROLES_MGMT_TEXTS
+    
+    # Получаем переводы
+    if not locale:
+        try:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == current_admin_tg_id))
+            admin_user = result.scalar_one_or_none()
+            if admin_user and admin_user.preferred_language_code:
+                locale = admin_user.preferred_language_code
+        except Exception:
+            pass
+        
+        if not locale:
+            locale = services.config.core.i18n.default_locale
+    
+    roles_texts = get_roles_mgmt_texts(services, locale)
+    admin_texts = get_admin_texts(services, locale)
+    texts = roles_texts
+    
     rbac = services.rbac
     current_admin_is_owner = current_admin_tg_id in services.config.core.super_admins
     logger.debug(f"[AdminRolesKeyboards] Генерация деталей для роли '{target_role.name}' (ID: {target_role.id}). Админ: {current_admin_tg_id}, владелец: {current_admin_is_owner}")
@@ -139,7 +194,7 @@ async def get_admin_role_details_keyboard_local(
         text=texts["back_to_roles_list"],
         callback_data=AdminRolesPanelNavigate(action="list").pack()
     ))
-    builder.row(get_back_to_admin_main_menu_button())
+    builder.row(get_back_to_admin_main_menu_button(services, locale))
     return builder.as_markup()
 
 async def get_admin_role_edit_permissions_keyboard_local( 
@@ -151,22 +206,42 @@ async def get_admin_role_edit_permissions_keyboard_local(
     category_key: Optional[str] = None,
     entity_name: Optional[str] = None,
     page: int = 1,
-    perms_per_page: int = 7 
+    perms_per_page: int = 7,
+    locale: Optional[str] = None
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    texts = ADMIN_COMMON_TEXTS 
+    
+    # Получаем переводы
+    if not locale:
+        try:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == current_admin_tg_id))
+            admin_user = result.scalar_one_or_none()
+            if admin_user and admin_user.preferred_language_code:
+                locale = admin_user.preferred_language_code
+        except Exception:
+            pass
+        
+        if not locale:
+            locale = services.config.core.i18n.default_locale
+    
+    roles_texts = get_roles_mgmt_texts(services, locale)
+    admin_texts = get_admin_texts(services, locale)
+    texts = admin_texts
+    
     rbac = services.rbac
     
     role_permission_ids: Set[int] = {perm.id for perm in target_role.permissions if perm.id is not None}
 
     builder.row(InlineKeyboardButton(
-        text=ROLES_MGMT_TEXTS.get("back_to_role_details", "⬅️ К деталям роли"),
+        text=roles_texts.get("back_to_roles_list", "⬅️ К деталям роли"),  # TODO: добавить back_to_role_details в переводы
         callback_data=AdminRolesPanelNavigate(action="view", item_id=target_role.id).pack()
     ))
 
     if not category_key:
         builder.button(
-            text=texts["perm_category_core"], 
+            text=admin_texts["perm_category_core"], 
             callback_data=AdminRolesPanelNavigate(action="edit_perms_nav", item_id=target_role.id, category_key="core", page=1).pack()
         )
         module_perms_exist = False
@@ -175,12 +250,12 @@ async def get_admin_role_edit_permissions_keyboard_local(
             if declared_module_perms: module_perms_exist = True
         if module_perms_exist:
             builder.button(
-                text=texts["perm_category_modules"],
+                text=admin_texts["perm_category_modules"],
                 callback_data=AdminRolesPanelNavigate(action="edit_perms_nav", item_id=target_role.id, category_key="module", page=1).pack()
             )
         builder.adjust(1)
         # Не забываем добавить кнопку "Назад в Админ-панель" и здесь, если это верхний уровень выбора категорий
-        builder.row(get_back_to_admin_main_menu_button())
+        builder.row(get_back_to_admin_main_menu_button(services, locale))
         return builder.as_markup()
 
     permissions_to_display_final: List['DBPermission'] = []
@@ -188,7 +263,7 @@ async def get_admin_role_edit_permissions_keyboard_local(
         all_system_permissions = await rbac.get_all_permissions(session)
 
     back_to_category_selection_button = InlineKeyboardButton(
-        text=texts["back_to_perm_categories"], 
+        text=admin_texts["back_to_perm_categories"], 
         callback_data=AdminRolesPanelNavigate(action="edit_perms_nav", item_id=target_role.id, category_key=None, entity_name=None, page=1).pack()
     )
 
@@ -220,10 +295,10 @@ async def get_admin_role_edit_permissions_keyboard_local(
             elif entity_name in CORE_PERM_PREFIXES_MAP_ROLES:
                 prefix = CORE_PERM_PREFIXES_MAP_ROLES[entity_name]
                 permissions_to_display_final = [p for p in all_system_permissions if p.name.startswith(prefix)]
-            builder.row(InlineKeyboardButton(text=texts["back_to_core_perm_groups"], callback_data=AdminRolesPanelNavigate(action="edit_perms_nav", item_id=target_role.id, category_key="core", entity_name=None, page=1).pack()))
+            builder.row(InlineKeyboardButton(text=admin_texts["back_to_core_perm_groups"], callback_data=AdminRolesPanelNavigate(action="edit_perms_nav", item_id=target_role.id, category_key="core", entity_name=None, page=1).pack()))
     elif category_key == "module":
         if not services.modules: 
-            builder.button(text="Ошибка: Загрузчик модулей недоступен.", callback_data="dummy_error_no_module_loader_perms"); return builder.as_markup() # Изменена dummy_data
+            builder.button(text=admin_texts.get("admin_modules_error_no_module_loader", "Ошибка: Загрузчик модулей недоступен."), callback_data="dummy_error_no_module_loader_perms"); return builder.as_markup() # Изменена dummy_data
         module_permissions_map: Dict[str, List['DBPermission']] = {}
         module_display_names: Dict[str, str] = {}
         for p in all_system_permissions:
@@ -236,7 +311,7 @@ async def get_admin_role_edit_permissions_keyboard_local(
                 module_permissions_map[module_name_candidate].append(p)
         if not entity_name: 
             sorted_module_names = sorted(module_permissions_map.keys())
-            if not sorted_module_names: builder.button(text=texts["no_modules_with_perms"], callback_data="dummy_no_mod_perms_for_role") # Изменена dummy_data
+            if not sorted_module_names: builder.button(text=admin_texts["no_modules_with_perms"], callback_data="dummy_no_mod_perms_for_role") # Изменена dummy_data
             else:
                 for mod_name in sorted_module_names:
                     builder.button(text=f"🧩 {module_display_names.get(mod_name, mod_name)}", callback_data=AdminRolesPanelNavigate(action="edit_perms_nav", item_id=target_role.id, category_key="module", entity_name=mod_name, page=1).pack())
@@ -274,5 +349,5 @@ async def get_admin_role_edit_permissions_keyboard_local(
     elif entity_name: 
         builder.button(text=texts["no_permissions_in_group"], callback_data="dummy_no_perms_in_group_for_role_entity") # Изменена dummy_data
 
-    builder.row(get_back_to_admin_main_menu_button())
+    builder.row(get_back_to_admin_main_menu_button(services, locale))
     return builder.as_markup()

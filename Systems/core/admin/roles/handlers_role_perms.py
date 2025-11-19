@@ -10,8 +10,8 @@ from aiogram.exceptions import TelegramBadRequest # <--- ИСПРАВЛЕН ИМ
 
 # Исправленные импорты
 from Systems.core.ui.callback_data_factories import AdminRolesPanelNavigate 
-from .keyboards_roles import get_admin_role_edit_permissions_keyboard_local, ROLES_MGMT_TEXTS
-from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS
+from .keyboards_roles import get_admin_role_edit_permissions_keyboard_local, ROLES_MGMT_TEXTS, get_roles_mgmt_texts
+from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_admin_texts
 from Systems.core.admin.filters_admin import can_view_admin_panel_filter
 from Systems.core.rbac.service import PERMISSION_CORE_ROLES_ASSIGN_PERMISSIONS
 from Systems.core.database.core_models import Role as DBRole, Permission as DBPermission
@@ -42,8 +42,24 @@ async def cq_admin_role_edit_permissions_entry(
     target_role_db_id = callback_data.item_id
     page = callback_data.page or 1 
 
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    roles_texts = get_roles_mgmt_texts(services_provider, user_locale)
+
     if target_role_db_id is None:
-        await query.answer("Ошибка: ID роли не указан.", show_alert=True); return
+        await query.answer(admin_texts["admin_error_role_id_not_specified"], show_alert=True); return
 
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Админ {admin_user_id} входит в FSM управления правами для Role ID: {target_role_db_id}, page: {page}")
 
@@ -51,12 +67,12 @@ async def cq_admin_role_edit_permissions_entry(
         current_admin_is_owner = admin_user_id in services_provider.config.core.super_admins
         if not current_admin_is_owner and \
            not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_ROLES_ASSIGN_PERMISSIONS):
-            await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True)
+            await query.answer(admin_texts["access_denied"], show_alert=True)
             return
         
         target_role = await session.get(DBRole, target_role_db_id, options=[selectinload(DBRole.permissions)])
         if not target_role:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); return
+            await query.answer(admin_texts["not_found_generic"], show_alert=True); return
 
     await state.clear()
     await state.set_state(FSMEditRolePermissions.navigating_role_permissions)
@@ -109,12 +125,28 @@ async def cq_admin_role_toggle_permission(
     state: FSMContext
 ):
     admin_user_id = query.from_user.id
+    
+    # Получаем язык пользователя
+    user_locale_toggle = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale_toggle = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts_toggle = get_admin_texts(services_provider, user_locale_toggle)
+    
     fsm_data = await state.get_data()
     target_role_db_id: Optional[int] = fsm_data.get("target_role_id_for_perms")
     permission_to_toggle_id: Optional[int] = callback_data.permission_id
 
     if target_role_db_id is None or permission_to_toggle_id is None:
-        await query.answer("Ошибка: неверные данные для изменения разрешения.", show_alert=True); return
+        await query.answer(admin_texts_toggle["admin_error_invalid_permission_data"], show_alert=True); return
 
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Админ {admin_user_id} изменяет разрешение "
                 f"PermID:'{permission_to_toggle_id}' для Role DBID:{target_role_db_id}")
@@ -123,13 +155,13 @@ async def cq_admin_role_toggle_permission(
         current_admin_is_owner = admin_user_id in services_provider.config.core.super_admins
         if not current_admin_is_owner and \
            not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_ROLES_ASSIGN_PERMISSIONS):
-            await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True); return
+            await query.answer(admin_texts_toggle["access_denied"], show_alert=True); return
         
         target_role = await session.get(DBRole, target_role_db_id, options=[selectinload(DBRole.permissions)])
         permission_to_modify = await session.get(DBPermission, permission_to_toggle_id)
 
         if not target_role or not permission_to_modify:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); return
+            await query.answer(admin_texts_toggle["not_found_generic"], show_alert=True); return
 
         role_has_this_perm = permission_to_modify in target_role.permissions
         alert_text, action_performed = "", False
@@ -137,17 +169,17 @@ async def cq_admin_role_toggle_permission(
         if role_has_this_perm:
             if await services_provider.rbac.remove_permission_from_role(session, target_role, permission_to_modify.name):
                 action_performed = True
-                alert_text = f"Разрешение '{permission_to_modify.name}' снято с роли."
-            else: alert_text = f"Не удалось снять разрешение '{permission_to_modify.name}'."
+                alert_text = admin_texts_toggle["admin_role_perm_removed"].format(permission_name=permission_to_modify.name)
+            else: alert_text = admin_texts_toggle["admin_role_perm_failed_to_remove"].format(permission_name=permission_to_modify.name)
         else:
             if await services_provider.rbac.assign_permission_to_role(session, target_role, permission_to_modify.name, auto_create_perm=False):
                 action_performed = True
-                alert_text = f"Разрешение '{permission_to_modify.name}' назначено роли."
-            else: alert_text = f"Не удалось назначить разрешение '{permission_to_modify.name}'."
+                alert_text = admin_texts_toggle["admin_role_perm_assigned"].format(permission_name=permission_to_modify.name)
+            else: alert_text = admin_texts_toggle["admin_role_perm_failed_to_assign"].format(permission_name=permission_to_modify.name)
         
         if action_performed:
             try: await session.commit(); logger.info(f"[{MODULE_NAME_FOR_LOG}] {alert_text} для Role ID: {target_role.id}"); await session.refresh(target_role, attribute_names=['permissions'])
-            except Exception as e: await session.rollback(); logger.error(f"Ошибка commit: {e}"); alert_text = "Ошибка сохранения."
+            except Exception as e: await session.rollback(); logger.error(f"Ошибка commit: {e}"); alert_text = admin_texts_toggle["admin_error_saving"]
         
         await query.answer(alert_text, show_alert=action_performed and "Не удалось" not in alert_text)
         await _show_role_permissions_menu(query, services_provider, state)
@@ -172,22 +204,22 @@ async def _show_role_permissions_menu(
     async with services_provider.db.get_session() as session:
         target_role = await session.get(DBRole, target_role_db_id, options=[selectinload(DBRole.permissions)])
         if not target_role:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); await state.clear(); return
+            await query.answer(admin_texts_show["not_found_generic"], show_alert=True); await state.clear(); return
 
         all_system_permissions = await services_provider.rbac.get_all_permissions(session)
         
-        base_text = ROLES_MGMT_TEXTS["edit_permissions_for_role"].format(role_name=hbold(target_role.name))
+        base_text = roles_texts_show["edit_permissions_for_role"].format(role_name=hbold(target_role.name))
         current_level_text = ""
         if category_key == "core":
-            current_level_text = f" / Ядро"
-            if entity_name: current_level_text += f" / {ADMIN_COMMON_TEXTS.get(f'perm_core_group_{entity_name}', entity_name.capitalize())}"
+            current_level_text = f" / {admin_texts_show.get('admin_perm_category_core', 'Ядро')}"
+            if entity_name: current_level_text += f" / {admin_texts_show.get(f'admin_perm_core_group_{entity_name}', entity_name.capitalize())}"
         elif category_key == "module":
-            current_level_text = f" / Модули"
+            current_level_text = f" / {admin_texts_show.get('admin_perm_category_modules', 'Модули')}"
             if entity_name:
                 mod_info = services_provider.modules.get_module_info(entity_name)
                 current_level_text += f" / {mod_info.manifest.display_name if mod_info and mod_info.manifest else entity_name}"
         
-        text = f"{base_text}{current_level_text}\nОтметьте разрешения для назначения/снятия:"
+        text = f"{base_text}{current_level_text}\nОтметьте разрешения для назначения/снятия:"  # TODO: добавить в переводы
         
         keyboard = await get_admin_role_edit_permissions_keyboard_local(
             target_role=target_role, 
@@ -195,7 +227,8 @@ async def _show_role_permissions_menu(
             services=services_provider, 
             current_admin_tg_id=admin_user_id, 
             session=session,
-            category_key=category_key, entity_name=entity_name, page=page
+            category_key=category_key, entity_name=entity_name, page=page,
+            locale=user_locale_show
         )
 
         if query.message:

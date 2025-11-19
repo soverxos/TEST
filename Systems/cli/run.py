@@ -23,6 +23,12 @@ def run_command(
         "-d",
         help="Запустить бота в режиме отладки (увеличит уровень логирования до DEBUG).",
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Подробный вывод логов с информацией о модуле, функции и строке.",
+    ),
     background: bool = typer.Option(
         False,
         "--background",
@@ -78,6 +84,12 @@ def run_command(
         os.environ["SDB_LAUNCH_DEBUG_MODE"] = "true"
     else:
         os.environ["SDB_LAUNCH_DEBUG_MODE"] = "false"
+    
+    # Устанавливаем флаг verbose для логирования
+    if verbose:
+        os.environ["SDB_VERBOSE"] = "true"
+    else:
+        os.environ["SDB_VERBOSE"] = "false"
 
     if background:
         if sys.platform == "win32":
@@ -102,6 +114,8 @@ def run_command(
 
         env_for_subprocess = os.environ.copy()
         env_for_subprocess["SDB_SHOULD_WRITE_PID"] = "true"
+        # Передаем флаг verbose в фоновый процесс
+        env_for_subprocess["SDB_VERBOSE"] = "true" if verbose else "false"
 
         try:
             process = subprocess.Popen(

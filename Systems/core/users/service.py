@@ -76,10 +76,14 @@ class UserService:
             updated_fields_log['last_name'] = (db_user.last_name, tg_user.last_name)
             db_user.last_name = tg_user.last_name
             data_changed_meaningfully = True
-        if db_user.preferred_language_code != current_lang_code:
+        # НЕ обновляем preferred_language_code, если пользователь уже установил его явно
+        # Это позволяет пользователю сохранить выбранный язык, даже если язык Telegram отличается
+        # Обновляем только если язык не был установлен (None)
+        if db_user.preferred_language_code is None and current_lang_code:
             updated_fields_log['preferred_language_code'] = (db_user.preferred_language_code, current_lang_code)
             db_user.preferred_language_code = current_lang_code
             data_changed_meaningfully = True
+            self._logger.debug(f"Установлен язык из Telegram для пользователя {tg_user.id}: {current_lang_code} (язык не был установлен ранее)")
         
         is_owner_check = tg_user.id in self._services.config.core.super_admins
 

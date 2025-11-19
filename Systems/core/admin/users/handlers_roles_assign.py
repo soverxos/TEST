@@ -6,8 +6,8 @@ from sqlalchemy.orm import selectinload
 from aiogram.exceptions import TelegramBadRequest # <--- ИСПРАВЛЕН ИМПОРТ
 
 from Systems.core.ui.callback_data_factories import AdminUsersPanelNavigate
-from .keyboards_users import get_admin_user_edit_roles_keyboard_local, USERS_MGMT_TEXTS 
-from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS 
+from .keyboards_users import get_admin_user_edit_roles_keyboard_local, USERS_MGMT_TEXTS, get_users_mgmt_texts
+from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_admin_texts 
 from Systems.core.admin.filters_admin import can_view_admin_panel_filter
 from Systems.core.rbac.service import PERMISSION_CORE_USERS_ASSIGN_ROLES, DEFAULT_ROLE_USER
 from Systems.core.database.core_models import User as DBUser, Role as DBRole
@@ -31,36 +31,53 @@ async def cq_admin_user_edit_roles_start_assign(
 ):
     admin_user_id = query.from_user.id
     target_user_db_id: Optional[int] = None
+    
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    users_texts = get_users_mgmt_texts(services_provider, user_locale)
+    
     if callback_data.item_id is not None:
         try: 
             target_user_db_id = int(str(callback_data.item_id))
         except ValueError:
             logger.warning(f"[{MODULE_NAME_FOR_LOG}] Некорректный item_id '{callback_data.item_id}' для edit_roles_start.")
-            await query.answer("Ошибка: неверный ID пользователя.", show_alert=True)
+            await query.answer(admin_texts["admin_error_invalid_user_id"], show_alert=True)
             return
     
     if target_user_db_id is None: 
-        await query.answer("Ошибка: ID пользователя для редактирования ролей не указан.", show_alert=True); return
+        await query.answer(admin_texts["admin_error_user_id_for_roles_not_specified"], show_alert=True); return
 
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} открывает интерфейс редактирования ролей для пользователя DB ID: {target_user_db_id}")
 
     async with services_provider.db.get_session() as session:
         if not services_provider.config.core.super_admins or admin_user_id not in services_provider.config.core.super_admins:
             if not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_USERS_ASSIGN_ROLES):
-                await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True); return
+                await query.answer(admin_texts["access_denied"], show_alert=True); return
         
         target_user = await session.get(DBUser, target_user_db_id, options=[selectinload(DBUser.roles)])
         if not target_user:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); return
+            await query.answer(admin_texts["not_found_generic"], show_alert=True); return
 
         if target_user.telegram_id in services_provider.config.core.super_admins:
-            await query.answer("Роли Владельца системы не изменяются через этот интерфейс.", show_alert=True)
-            await _send_or_edit_user_details_local(query, target_user, services_provider, session, admin_user_id)
+            await query.answer(admin_texts["admin_error_cannot_change_owner_roles"], show_alert=True)
+            await _send_or_edit_user_details_local(query, target_user, services_provider, session, admin_user_id, locale=user_locale)
             return
 
         all_system_roles = await services_provider.rbac.get_all_roles(session)
-        text = USERS_MGMT_TEXTS["edit_roles_for_user"].format(user_name=hbold(target_user.full_name))
-        keyboard = await get_admin_user_edit_roles_keyboard_local(target_user, all_system_roles, services_provider, admin_user_id, session)
+        text = users_texts["edit_roles_for_user"].format(user_name=hbold(target_user.full_name))
+        keyboard = await get_admin_user_edit_roles_keyboard_local(target_user, all_system_roles, services_provider, admin_user_id, session, locale=user_locale)
 
         if query.message:
             try:
@@ -72,7 +89,7 @@ async def cq_admin_user_edit_roles_start_assign(
                 else: logger.warning(f"[{MODULE_NAME_FOR_LOG}] Ошибка edit_text для ролей: {e_tbr}")
             except Exception as e_edit:
                 logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка в cq_admin_user_edit_roles_start_assign: {e_edit}", exc_info=True)
-                await query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+                await query.answer(admin_texts["error_general"], show_alert=True)
 
 @user_roles_assign_router.callback_query(AdminUsersPanelNavigate.filter(F.action == "toggle_role"))
 async def cq_admin_user_toggle_role_assign( 

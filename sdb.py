@@ -26,8 +26,29 @@ import os as _os
 import sys as _sys
 _os.environ.setdefault("SDB_CLI_MODE", "true")
 
-# Гарантируем, что CLI-режим не мешает загрузке токена при старте бота
+# Проверяем флаг -v/--verbose ДО импорта модулей, чтобы установить формат логирования
 _argv = _sys.argv[1:]
+_verbose_flag = "-v" in _argv or "--verbose" in _argv
+if _verbose_flag:
+    _os.environ["SDB_VERBOSE"] = "true"
+else:
+    _os.environ["SDB_VERBOSE"] = "false"
+    # Настраиваем простой формат логирования ДО импорта модулей
+    # чтобы логи при загрузке настроек не были подробными
+    try:
+        from loguru import logger as _early_logger
+        _early_logger.remove()  # Удаляем стандартный handler
+        # Простой формат: только время и сообщение
+        _early_logger.add(
+            _sys.stderr,
+            level="INFO",
+            format="<green>{time:HH:mm:ss}</green> <level>{message}</level>",
+            colorize=True
+        )
+    except ImportError:
+        pass  # Если loguru не доступен, пропускаем
+
+# Гарантируем, что CLI-режим не мешает загрузке токена при старте бота
 _bot_commands = {"start", "run", "bot"}
 if _argv and _argv[0] in _bot_commands:
     if _os.environ.get("SDB_CLI_MODE") == "true":

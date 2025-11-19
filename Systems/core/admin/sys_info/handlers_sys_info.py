@@ -65,6 +65,21 @@ async def cq_admin_show_system_info_entry(
     user_id = query.from_user.id 
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} запросил системную информацию.")
 
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+
     can_view_full = False
     can_view_basic = False
     is_owner_from_config = user_id in services_provider.config.core.super_admins
@@ -75,22 +90,22 @@ async def cq_admin_show_system_info_entry(
                 can_view_basic = await services_provider.rbac.user_has_permission(session, user_id, PERMISSION_CORE_SYSTEM_VIEW_INFO_BASIC)
         
     if not (is_owner_from_config or can_view_full or can_view_basic):
-        await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True)
+        await query.answer(admin_texts["access_denied"], show_alert=True)
         return
 
     s = services_provider.config 
     
-    text_parts: List[str] = [f"🖥️ {hbold('Системная информация SwiftDevBot')}\n"]
+    text_parts: List[str] = [f"🖥️ {hbold(admin_texts.get('admin_sys_info_title', 'Системная информация SwiftDevBot'))}\n"]
 
     # Общая информация
-    text_parts.append(f"ℹ️ {hbold('Общая информация')} ───")
-    text_parts.append(f"  ▸ {hbold('SDB Core')}: {hcode(f'v{s.core.sdb_version}')}")
-    text_parts.append(f"  ▸ {hbold('Python')}: {hcode(f'v{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')}")
-    text_parts.append(f"  ▸ {hbold('Aiogram')}: {hcode(f'v{aiogram.__version__}')}")
-    text_parts.append(f"  ▸ {hbold('ОС')}: {platform.system()} {platform.release()} ({platform.machine()})")
+    text_parts.append(f"ℹ️ {hbold(admin_texts.get('admin_sys_info_general', 'Общая информация'))} ───")
+    text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_sdb_core', 'SDB Core'))}: {hcode(f'v{s.core.sdb_version}')}")
+    text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_python', 'Python'))}: {hcode(f'v{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')}")
+    text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_aiogram', 'Aiogram'))}: {hcode(f'v{aiogram.__version__}')}")
+    text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_os', 'ОС'))}: {platform.system()} {platform.release()} ({platform.machine()})")
     
     # Процесс бота
-    text_parts.append(f"\n🤖 {hbold('Процесс бота')} ───")
+    text_parts.append(f"\n🤖 {hbold(admin_texts.get('admin_sys_info_bot_process', 'Процесс бота'))} ───")
     current_pid_handler = os.getpid() 
     pid_file_path = s.core.project_data_path / PID_FILENAME
     
@@ -106,12 +121,11 @@ async def cq_admin_show_system_info_entry(
                 create_time = datetime.fromtimestamp(process.create_time(), tz=timezone.utc)
                 uptime_val = format_uptime(create_time)
                 start_time_str = create_time.strftime('%d.%m.%Y %H:%M')
-                text_parts.append(f"  ▸ {hbold('Запущен')}: {start_time_str}")
-                text_parts.append(f"  ▸ {hbold('PID')}: {pid_display_str}")
-                text_parts.append(f"  ▸ {hbold('Время работы')}: {hbold(uptime_val)}")
+                text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_pid', 'PID'))}: {pid_display_str}")
+                text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_uptime', 'Время работы'))}: {hbold(uptime_val)}")
                 pid_for_psutil_stats = pid_from_file 
             else:
-                status_msg = "Процесс не найден"
+                status_msg = admin_texts.get('admin_sys_info_process_not_found', 'Процесс не найден')
                 if not psutil: status_msg += " (psutil недоступен)"
                 text_parts.append(f"  ▸ {hbold('Статус (PID из файла)')}: {hcode(status_msg)} (PID: {pid_display_str})")
                 text_parts.append(f"  ▸ {hbold('PID (хэндлера)')}: {hcode(str(current_pid_handler))}")
@@ -128,34 +142,36 @@ async def cq_admin_show_system_info_entry(
             text_parts.append(f"  ▸ {hbold('Запущен (тек. процесс)')}: {start_time_str} (PID: {pid_display_str})")
             text_parts.append(f"  ▸ {hbold('Время работы (тек.)')}: {hbold(uptime_val)}")
         except Exception: 
-             text_parts.append(f"  ▸ {hbold('Время работы')}: Н/Д (ошибка psutil для PID: {pid_display_str})")
+             text_parts.append(f"  ▸ {hbold('Время работы')}: {admin_texts.get('admin_sys_info_na', 'Н/Д')} (ошибка psutil для PID: {pid_display_str})")
     else:
-        text_parts.append(f"  ▸ {hbold('PID')}: {pid_display_str}")
-        text_parts.append(f"  ▸ {hbold('Время работы')}: Н/Д (PID-файл не найден / psutil недоступен)")
+        text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_pid', 'PID'))}: {pid_display_str}")
+        text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_uptime', 'Время работы'))}: {admin_texts.get('admin_sys_info_na', 'Н/Д')} (PID-файл не найден / psutil недоступен)")
 
     if psutil:
         try:
             target_ps_proc = psutil.Process(pid_for_psutil_stats)
             mem_rss_mb = target_ps_proc.memory_info().rss / (1024 * 1024)
             cpu_perc = target_ps_proc.cpu_percent(interval=0.05)
-            text_parts.append(f"  ▸ {hbold('Память (RSS)')}: {hbold(f'{mem_rss_mb:.2f} MB')}")
-            text_parts.append(f"  ▸ {hbold('CPU (мгновен.)')}: {hbold(f'{cpu_perc:.1f}%')}")
+            text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_memory', 'Память'))}: {hbold(f'{mem_rss_mb:.2f} MB')}")
+            text_parts.append(f"  ▸ {hbold(admin_texts.get('admin_sys_info_cpu_percent', 'CPU'))}: {hbold(f'{cpu_perc:.1f}%')}")
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-             text_parts.append(f"  ▸ {hbold('Память/CPU')}: {hcode(f'Н/Д (процесс {pid_for_psutil_stats} недоступен)')}")
+             na_text = admin_texts.get('admin_sys_info_na', 'Н/Д')
+             text_parts.append(f"  ▸ {hbold('Память/CPU')}: {hcode(f'{na_text} (процесс {pid_for_psutil_stats} недоступен)')}")
         except Exception as e_ps_stats:
              logger.warning(f"Ошибка psutil для статистики PID {pid_for_psutil_stats}: {e_ps_stats}")
-             text_parts.append(f"  ▸ {hbold('Память/CPU')}: {hcode('Н/Д (ошибка psutil)')}")
+             na_text = admin_texts.get('admin_sys_info_na', 'Н/Д')
+             text_parts.append(f"  ▸ {hbold('Память/CPU')}: {hcode(f'{na_text} (ошибка psutil)')}")
     else:
         text_parts.append(f"  ▸ {hbold('Память/CPU')}: {hcode('psutil не установлен')}")
 
     # База данных
-    text_parts.append(f"\n🗃️ {hbold('База данных')} ───")
-    text_parts.append(f"  ▸ Тип: {hbold(s.db.type.upper())}")
+    text_parts.append(f"\n🗄️ {hbold(admin_texts.get('admin_sys_info_database', 'База данных'))} ───")
+    text_parts.append(f"  ▸ {admin_texts.get('admin_sys_info_db_type', 'Тип')}: {hbold(s.db.type.upper())}")
     if s.db.type == "sqlite":
         text_parts.append(f"  ▸ Путь: {hcode(s.db.sqlite_path)}")
     
     # Кэш
-    text_parts.append(f"\n💾 {hbold('Кэш')} ───")
+    text_parts.append(f"\n💾 {hbold('Кэш')} ───")  # TODO: добавить в переводы
     text_parts.append(f"  ▸ Тип: {hbold(s.cache.type.capitalize())}")
     if s.cache.type == "redis" and s.cache.redis_url:
         text_parts.append(f"  ▸ URL: {hcode(str(s.cache.redis_url))}") 
@@ -197,9 +213,9 @@ async def cq_admin_show_system_info_entry(
                  await query.answer()
             else:
                 logger.error(f"[{MODULE_NAME_FOR_LOG}] TelegramBadRequest при отображении системной информации: {e_tbr}", exc_info=True)
-                await query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+                await query.answer(admin_texts["error_general"], show_alert=True)
         except Exception as e_edit:
             logger.error(f"[{MODULE_NAME_FOR_LOG}] Непредвиденная ошибка при отображении системной информации: {e_edit}", exc_info=True)
-            await query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+            await query.answer(admin_texts["error_general"], show_alert=True)
     else:
         await query.answer()

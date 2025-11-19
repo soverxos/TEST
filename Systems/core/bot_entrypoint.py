@@ -207,6 +207,36 @@ async def run_sdb_bot() -> int:
         dp.update.outer_middleware(I18nMiddleware(translator))
         global_logger.info("I18nMiddleware зарегистрирован для всех Update.")
 
+        # Rate Limiting Middleware
+        from Systems.core.security.rate_limiter import RateLimitMiddleware, RateLimiter
+        rate_limiter = RateLimiter(default_limit=10, default_window=60)
+        rate_limiter_middleware = RateLimitMiddleware(rate_limiter)
+        # Исключаем супер-админов из rate limiting
+        for admin_id in services.config.core.super_admins:
+            rate_limiter_middleware.exempt_user(admin_id)
+        dp.update.outer_middleware(rate_limiter_middleware)
+        global_logger.info("RateLimitMiddleware зарегистрирован для всех Update.")
+
+        # Input Validation Middleware
+        from Systems.core.security.input_validator import InputValidationMiddleware
+        input_validator_middleware = InputValidationMiddleware()
+        # Исключаем супер-админов из валидации
+        for admin_id in services.config.core.super_admins:
+            input_validator_middleware.exempt_user(admin_id)
+        dp.update.outer_middleware(input_validator_middleware)
+        global_logger.info("InputValidationMiddleware зарегистрирован для всех Update.")
+
+        # Error Handler Middleware
+        from Systems.core.errors.handler import ErrorHandlerMiddleware
+        dp.update.outer_middleware(ErrorHandlerMiddleware())
+        global_logger.info("ErrorHandlerMiddleware зарегистрирован для всех Update.")
+
+        # Metrics Middleware
+        from Systems.core.monitoring.metrics import MetricsMiddleware, get_metrics_collector
+        metrics_collector = get_metrics_collector()
+        dp.update.outer_middleware(MetricsMiddleware(metrics_collector))
+        global_logger.info("MetricsMiddleware зарегистрирован для всех Update.")
+
         dp.update.outer_middleware(UserStatusMiddleware())
         global_logger.info("UserStatusMiddleware зарегистрирован для всех Update.")
 

@@ -28,8 +28,30 @@ async def cq_nav_to_main_menu(
     user_id = query.from_user.id
     logger.debug(f"User {user_id} requested main menu.")
     
-    text = TEXTS_CORE_KEYBOARDS_EN["main_menu_title"]
-    keyboard = await get_main_menu_reply_keyboard(services_provider=services_provider, user_telegram_id=user_id)
+    # Получаем язык пользователя из БД
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    # Получаем переводы
+    from Systems.core.i18n.translator import Translator
+    translator = Translator(
+        locales_dir=services_provider.config.core.i18n.locales_dir,
+        domain=services_provider.config.core.i18n.domain,
+        default_locale=services_provider.config.core.i18n.default_locale,
+        available_locales=services_provider.config.core.i18n.available_locales
+    )
+    
+    text = translator.gettext("main_menu_title", user_locale)
+    keyboard = await get_main_menu_reply_keyboard(services_provider=services_provider, user_telegram_id=user_id, locale=user_locale)
     
     try:
         if query.message:
@@ -59,20 +81,41 @@ async def cq_nav_to_modules_list(
     page = callback_data.page if callback_data.page is not None else 1
     logger.debug(f"User {user_id} requested modules list, page: {page}")
 
-    texts = TEXTS_CORE_KEYBOARDS_EN
+    # Получаем язык пользователя из БД
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    # Получаем переводы
+    from Systems.core.i18n.translator import Translator
+    translator = Translator(
+        locales_dir=services_provider.config.core.i18n.locales_dir,
+        domain=services_provider.config.core.i18n.domain,
+        default_locale=services_provider.config.core.i18n.default_locale,
+        available_locales=services_provider.config.core.i18n.available_locales
+    )
     
     module_ui_entries = services_provider.ui_registry.get_all_module_entries()
     items_per_page = 5 
     total_pages = (len(module_ui_entries) + items_per_page - 1) // items_per_page
     total_pages = max(1, total_pages) 
 
-    text = texts["modules_list_title_template"].format(current_page=page, total_pages=total_pages)
+    text = translator.gettext("modules_list_title_template", user_locale, current_page=page, total_pages=total_pages)
     
     keyboard = await get_modules_list_keyboard(
         services_provider=services_provider, 
         user_telegram_id=user_id, 
         current_page=page,
-        items_per_page=items_per_page
+        items_per_page=items_per_page,
+        locale=user_locale
     )
     
     try:

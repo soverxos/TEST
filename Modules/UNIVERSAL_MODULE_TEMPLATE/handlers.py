@@ -12,6 +12,7 @@ from aiogram import Router, types, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.exceptions import TelegramBadRequest
 from loguru import logger
 from typing import TYPE_CHECKING
 
@@ -26,7 +27,8 @@ from .callback_data_factories import (
     TemplateSettingsCallback, TemplateFSMCallback,
     TemplateAction, TemplateAdminAction, TemplateDataAction,
     parse_template_callback, parse_admin_callback, parse_data_callback,
-    parse_settings_callback, parse_fsm_callback
+    parse_settings_callback, parse_fsm_callback,
+    create_stats_callback, create_settings_callback, create_admin_panel_callback
 )
 from .permissions import MODULE_NAME, PERMISSIONS
 from .services import TemplateService
@@ -145,10 +147,24 @@ async def main_menu_callback(callback: types.CallbackQuery):
         return
     
     keyboard = get_main_menu_keyboard()
-    await callback.message.edit_text(
-        "🔧 **Главное меню**\n\nВыберите действие:",
-        reply_markup=keyboard
-    )
+    text = "🔧 **Главное меню**\n\nВыберите действие:"
+    
+    try:
+        if callback.message and (callback.message.text != text or callback.message.reply_markup != keyboard):
+            await callback.message.edit_text(
+                text=text,
+                reply_markup=keyboard
+            )
+        else:
+            logger.trace(f"[{MODULE_NAME}] Сообщение главного меню не было изменено.")
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            logger.trace(f"[{MODULE_NAME}] Сообщение главного меню не было изменено (поймано исключение).")
+        else:
+            logger.warning(f"[{MODULE_NAME}] Ошибка редактирования сообщения главного меню: {e}")
+    except Exception as e_edit:
+        logger.error(f"[{MODULE_NAME}] Непредвиденная ошибка в main_menu_callback: {e_edit}", exc_info=True)
+    
     await callback.answer()
 
 @template_router.callback_query(TemplateCallback.filter(F.action == TemplateAction.ADMIN_PANEL))
@@ -160,10 +176,24 @@ async def admin_panel_callback(callback: types.CallbackQuery):
         return
     
     keyboard = get_admin_menu_keyboard()
-    await callback.message.edit_text(
-        "⚙️ **Административная панель**\n\nВыберите действие:",
-        reply_markup=keyboard
-    )
+    text = "⚙️ **Административная панель**\n\nВыберите действие:"
+    
+    try:
+        if callback.message and (callback.message.text != text or callback.message.reply_markup != keyboard):
+            await callback.message.edit_text(
+                text=text,
+                reply_markup=keyboard
+            )
+        else:
+            logger.trace(f"[{MODULE_NAME}] Сообщение админ-панели не было изменено.")
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            logger.trace(f"[{MODULE_NAME}] Сообщение админ-панели не было изменено (поймано исключение).")
+        else:
+            logger.warning(f"[{MODULE_NAME}] Ошибка редактирования сообщения админ-панели: {e}")
+    except Exception as e_edit:
+        logger.error(f"[{MODULE_NAME}] Непредвиденная ошибка в admin_panel_callback: {e_edit}", exc_info=True)
+    
     await callback.answer()
 
 @template_router.callback_query(TemplateCallback.filter(F.action == TemplateAction.SHOW_STATS))
@@ -197,7 +227,20 @@ async def show_stats_callback(callback: types.CallbackQuery):
     )
     
     keyboard = get_simple_back_keyboard("main_menu")
-    await callback.message.edit_text(stats_text, reply_markup=keyboard)
+    
+    try:
+        if callback.message and (callback.message.text != stats_text or callback.message.reply_markup != keyboard):
+            await callback.message.edit_text(stats_text, reply_markup=keyboard)
+        else:
+            logger.trace(f"[{MODULE_NAME}] Сообщение статистики не было изменено.")
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            logger.trace(f"[{MODULE_NAME}] Сообщение статистики не было изменено (поймано исключение).")
+        else:
+            logger.warning(f"[{MODULE_NAME}] Ошибка редактирования сообщения статистики: {e}")
+    except Exception as e_edit:
+        logger.error(f"[{MODULE_NAME}] Непредвиденная ошибка в show_stats_callback: {e_edit}", exc_info=True)
+    
     await callback.answer()
 
 @template_router.callback_query(TemplateCallback.filter(F.action == TemplateAction.SHOW_SETTINGS))
@@ -240,6 +283,48 @@ async def start_input_callback(callback: types.CallbackQuery, state: FSMContext)
         "Отправьте заголовок для нового элемента:",
         reply_markup=keyboard
     )
+    await callback.answer()
+
+@template_router.callback_query(TemplateCallback.filter(F.action == TemplateAction.BACK))
+async def back_callback(callback: types.CallbackQuery, state: FSMContext):
+    """Обработчик кнопки 'Назад' - возвращает в главное меню модуля"""
+    services = get_services()
+    if services and not await check_permission(services, callback.from_user.id, PERMISSIONS.ACCESS):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    # Очищаем состояние FSM, если оно есть
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+    
+    # Показываем главное меню
+    keyboard = get_main_menu_keyboard()
+    text = (
+        f"🎯 **{MODULE_DISPLAY_NAME}**\n\n"
+        f"Добро пожаловать в универсальный шаблон модуля!\n\n"
+        f"📊 **Статистика:**\n"
+        f"• Версия: {MODULE_VERSION}\n"
+        f"• Статус: Активен\n\n"
+        f"Выберите действие:"
+    )
+    
+    try:
+        if callback.message and (callback.message.text != text or callback.message.reply_markup != keyboard):
+            await callback.message.edit_text(
+                text=text,
+                reply_markup=keyboard
+            )
+        else:
+            logger.trace(f"[{MODULE_NAME}] Сообщение главного меню не было изменено.")
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            logger.trace(f"[{MODULE_NAME}] Сообщение главного меню не было изменено (поймано исключение).")
+        else:
+            logger.warning(f"[{MODULE_NAME}] Ошибка редактирования сообщения главного меню: {e}")
+    except Exception as e_edit:
+        logger.error(f"[{MODULE_NAME}] Непредвиденная ошибка в back_callback: {e_edit}", exc_info=True)
+    
     await callback.answer()
 
 # === ОБРАБОТЧИКИ АДМИН ДЕЙСТВИЙ ===
@@ -526,21 +611,10 @@ async def delete_item_callback(callback: types.CallbackQuery):
 async def handle_module_entry(callback: types.CallbackQuery):
     """Обработчик входа в модуль через UI"""
     user_id = callback.from_user.id
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
-    services = get_services()
     
-    # Получаем сервисы через глобальный доступ (временное решение)
+    # Получаем сервисы через глобальный доступ
     try:
-        from core.services_provider import get_services_provider
+        from Systems.core.services_provider import get_services_provider
         services = get_services_provider()
     except ImportError:
         # Если нет глобального доступа, пропускаем проверку разрешений
@@ -551,8 +625,54 @@ async def handle_module_entry(callback: types.CallbackQuery):
         await callback.answer("❌ У вас нет доступа к этому модулю", show_alert=True)
         return
     
-    # Показываем главное меню модуля
-    keyboard = get_main_menu_keyboard()
+    # Показываем главное меню модуля с кнопкой "Назад" в список модулей системы
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    from Systems.core.ui.callback_data_factories import CoreMenuNavigate
+    
+    # Создаем клавиатуру главного меню модуля с кнопкой "Назад к модулям"
+    builder = InlineKeyboardBuilder()
+    
+    # Основные действия
+    builder.row(
+        InlineKeyboardButton(
+            text="📝 Создать элемент",
+            callback_data=TemplateCallback(action=TemplateAction.START_INPUT).pack()
+        )
+    )
+    
+    builder.row(
+        InlineKeyboardButton(
+            text="📋 Мои элементы",
+            callback_data=TemplateDataCallback(action=TemplateDataAction.LIST_ITEMS).pack()
+        ),
+        InlineKeyboardButton(
+            text="📊 Статистика",
+            callback_data=create_stats_callback()
+        )
+    )
+    
+    builder.row(
+        InlineKeyboardButton(
+            text="⚙️ Настройки",
+            callback_data=create_settings_callback()
+        ),
+        InlineKeyboardButton(
+            text="🔧 Админ панель",
+            callback_data=create_admin_panel_callback()
+        )
+    )
+    
+    # Кнопка "Назад к модулям" вместо обычной "Назад"
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Назад к модулям",
+            callback_data=CoreMenuNavigate(target_menu="modules_list").pack()
+        )
+    )
+    
+    keyboard = builder.as_markup()
+    
     text = (
         f"🎯 **{MODULE_DISPLAY_NAME}**\n\n"
         f"Добро пожаловать в универсальный шаблон модуля!\n\n"
@@ -562,11 +682,23 @@ async def handle_module_entry(callback: types.CallbackQuery):
         f"Выберите действие:"
     )
     
-    await callback.message.edit_text(
-        text=text,
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    try:
+        if callback.message and (callback.message.text != text or callback.message.reply_markup != keyboard):
+            await callback.message.edit_text(
+                text=text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+        else:
+            logger.trace(f"[{MODULE_NAME}] Сообщение входа в модуль не было изменено.")
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            logger.trace(f"[{MODULE_NAME}] Сообщение входа в модуль не было изменено (поймано исключение).")
+        else:
+            logger.warning(f"[{MODULE_NAME}] Ошибка редактирования сообщения входа в модуль: {e}")
+    except Exception as e_edit:
+        logger.error(f"[{MODULE_NAME}] Непредвиденная ошибка в handle_module_entry: {e_edit}", exc_info=True)
+    
     await callback.answer()
 
 @template_router.callback_query()

@@ -17,8 +17,9 @@ core:
   i18n:
     locales_dir: /root/SwiftDevBot-Project/Systems/locales
     domain: bot
-    default_locale: en
+    default_locale: ru
     available_locales:
+    - ru
     - en
     - ua
 project_root: /root/SwiftDevBot-Project

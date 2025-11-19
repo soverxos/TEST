@@ -9,8 +9,8 @@ from aiogram.filters import StateFilter # Импортируем StateFilter
 from aiogram.exceptions import TelegramBadRequest # Импортируем TelegramBadRequest
 
 from Systems.core.ui.callback_data_factories import AdminUsersPanelNavigate
-from .keyboards_users import get_user_direct_perms_keyboard, USERS_MGMT_TEXTS 
-from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS 
+from .keyboards_users import get_user_direct_perms_keyboard, USERS_MGMT_TEXTS, get_users_mgmt_texts
+from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_admin_texts 
 from Systems.core.admin.filters_admin import can_view_admin_panel_filter
 from Systems.core.rbac.service import PERMISSION_CORE_USERS_MANAGE_DIRECT_PERMISSIONS 
 from Systems.core.database.core_models import User as DBUser, Permission as DBPermission, Role as DBRole # Добавил DBRole
@@ -40,8 +40,24 @@ async def cq_admin_user_edit_direct_perms_entry( # Переименовано д
     admin_user_id = query.from_user.id
     target_user_db_id = callback_data.item_id
 
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    users_texts = get_users_mgmt_texts(services_provider, user_locale)
+
     if target_user_db_id is None:
-        await query.answer("Ошибка: ID пользователя не указан.", show_alert=True); return
+        await query.answer(admin_texts["admin_error_user_id_not_specified"], show_alert=True); return
 
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Админ {admin_user_id} входит в FSM управления прямыми правами для User DB ID: {target_user_db_id}")
 
@@ -49,14 +65,14 @@ async def cq_admin_user_edit_direct_perms_entry( # Переименовано д
         current_admin_is_owner = admin_user_id in services_provider.config.core.super_admins
         if not current_admin_is_owner and \
            not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_USERS_MANAGE_DIRECT_PERMISSIONS):
-            await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True)
+            await query.answer(admin_texts["access_denied"], show_alert=True)
             return
         
         target_user = await session.get(DBUser, target_user_db_id)
         if not target_user:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); return
+            await query.answer(admin_texts["not_found_generic"], show_alert=True); return
         if target_user.telegram_id in services_provider.config.core.super_admins:
-            await query.answer("Нельзя управлять прямыми разрешениями Владельца системы.", show_alert=True); return
+            await query.answer(admin_texts["admin_error_cannot_manage_owner_direct_perms"], show_alert=True); return
 
     await state.clear() 
     await state.set_state(FSMDirectUserPermsNavigation.navigating_direct_perms)
@@ -77,10 +93,25 @@ async def cq_admin_user_direct_perms_navigate(
     services_provider: 'BotServicesProvider',
     state: FSMContext
 ):
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == query.from_user.id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     fsm_data = await state.get_data()
     target_user_db_id = fsm_data.get("target_user_id_for_perms")
     if target_user_db_id is None: 
-        await query.answer("Ошибка состояния FSM. Попробуйте выйти и войти снова.", show_alert=True)
+        await query.answer(admin_texts["admin_error_fsm_state"], show_alert=True)
         await state.clear(); return
 
     new_fsm_context_data = {
@@ -107,12 +138,28 @@ async def cq_admin_user_toggle_direct_perm(
     state: FSMContext
 ):
     admin_user_id = query.from_user.id
+    
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     fsm_data = await state.get_data()
     target_user_db_id: Optional[int] = fsm_data.get("target_user_id_for_perms")
     permission_to_toggle_id: Optional[int] = callback_data.permission_id
 
     if target_user_db_id is None or permission_to_toggle_id is None:
-        await query.answer("Ошибка: неверные данные для изменения разрешения.", show_alert=True); return
+        await query.answer(admin_texts["admin_error_invalid_permission_data"], show_alert=True); return
 
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Админ {admin_user_id} изменяет прямое разрешение "
                 f"PermID:'{permission_to_toggle_id}' для User DBID:{target_user_db_id}")
@@ -121,15 +168,15 @@ async def cq_admin_user_toggle_direct_perm(
         current_admin_is_owner = admin_user_id in services_provider.config.core.super_admins
         if not current_admin_is_owner and \
            not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_USERS_MANAGE_DIRECT_PERMISSIONS):
-            await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True); return
+            await query.answer(admin_texts["access_denied"], show_alert=True); return
         
         target_user = await session.get(DBUser, target_user_db_id, options=[selectinload(DBUser.direct_permissions)])
         permission_to_modify = await session.get(DBPermission, permission_to_toggle_id)
 
         if not target_user or not permission_to_modify:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); return
+            await query.answer(admin_texts["not_found_generic"], show_alert=True); return
         if target_user.telegram_id in services_provider.config.core.super_admins: 
-            await query.answer("Нельзя изменять прямые разрешения Владельца.", show_alert=True); return
+            await query.answer(admin_texts["admin_error_cannot_modify_owner_direct_perms"], show_alert=True); return
 
         user_has_direct_perm = permission_to_modify in target_user.direct_permissions
         alert_text, action_performed = "", False
@@ -137,17 +184,17 @@ async def cq_admin_user_toggle_direct_perm(
         if user_has_direct_perm:
             if await services_provider.rbac.remove_direct_permission_from_user(session, target_user, permission_to_modify.name):
                 action_performed = True
-                alert_text = f"Прямое разрешение '{permission_to_modify.name}' снято."
-            else: alert_text = f"Не удалось снять прямое разрешение '{permission_to_modify.name}'."
+                alert_text = admin_texts["admin_direct_perm_removed"].format(permission_name=permission_to_modify.name)
+            else: alert_text = admin_texts["admin_direct_perm_failed_to_remove"].format(permission_name=permission_to_modify.name)
         else:
             if await services_provider.rbac.assign_direct_permission_to_user(session, target_user, permission_to_modify.name, auto_create_perm=False):
                 action_performed = True
-                alert_text = f"Прямое разрешение '{permission_to_modify.name}' назначено."
-            else: alert_text = f"Не удалось назначить прямое разрешение '{permission_to_modify.name}'."
+                alert_text = admin_texts["admin_direct_perm_assigned"].format(permission_name=permission_to_modify.name)
+            else: alert_text = admin_texts["admin_direct_perm_failed_to_assign"].format(permission_name=permission_to_modify.name)
         
         if action_performed:
             try: await session.commit(); logger.info(f"[{MODULE_NAME_FOR_LOG}] {alert_text} для User ID: {target_user.id}"); await session.refresh(target_user, attribute_names=['direct_permissions'])
-            except Exception as e: await session.rollback(); logger.error(f"Ошибка commit: {e}"); alert_text = "Ошибка сохранения."
+            except Exception as e: await session.rollback(); logger.error(f"Ошибка commit: {e}"); alert_text = admin_texts["admin_error_saving"]
         
         await query.answer(alert_text, show_alert=action_performed and "Не удалось" not in alert_text)
         await _show_user_direct_perms_menu(query, services_provider, state) 
@@ -159,6 +206,23 @@ async def _show_user_direct_perms_menu(
     state: FSMContext
 ):
     admin_user_id = query.from_user.id
+    
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    users_texts = get_users_mgmt_texts(services_provider, user_locale)
+    
     fsm_data = await state.get_data()
     
     target_user_db_id = fsm_data.get("target_user_id_for_perms")
@@ -167,7 +231,7 @@ async def _show_user_direct_perms_menu(
     page = fsm_data.get("current_page", 1)
 
     if target_user_db_id is None:
-        await query.answer("Ошибка состояния FSM (ID пользователя).", show_alert=True); await state.clear(); return
+        await query.answer(admin_texts["admin_error_fsm_state_user_id"], show_alert=True); await state.clear(); return
 
     async with services_provider.db.get_session() as session:
         target_user = await session.get(DBUser, target_user_db_id, options=[
@@ -175,15 +239,15 @@ async def _show_user_direct_perms_menu(
             selectinload(DBUser.roles).selectinload(DBRole.permissions) 
         ])
         if not target_user:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); await state.clear(); return
+            await query.answer(admin_texts["not_found_generic"], show_alert=True); await state.clear(); return
 
         all_system_permissions = await services_provider.rbac.get_all_permissions(session)
         
-        base_text = USERS_MGMT_TEXTS["edit_direct_perms_for_user"].format(user_name=hbold(target_user.full_name))
+        base_text = users_texts["edit_direct_perms_for_user"].format(user_name=hbold(target_user.full_name))
         current_level_text = ""
         if category_key == "core":
-            current_level_text = " / Ядро"
-            if entity_name: current_level_text += f" / {ADMIN_COMMON_TEXTS.get(f'perm_core_group_{entity_name}', entity_name.capitalize())}"
+            current_level_text = f" / {admin_texts['admin_perm_category_core']}"
+            if entity_name: current_level_text += f" / {admin_texts.get(f'admin_perm_core_group_{entity_name}', entity_name.capitalize())}"
         elif category_key == "module":
             current_level_text = " / Модули"
             if entity_name:
@@ -193,12 +257,15 @@ async def _show_user_direct_perms_menu(
         text = f"{base_text}{current_level_text}\nОтметьте прямые разрешения:"
         
         keyboard = await get_user_direct_perms_keyboard(
-            target_user=target_user, 
-            all_system_permissions=all_system_permissions, 
-            services=services_provider, 
-            current_admin_tg_id=admin_user_id, 
+            target_user=target_user,
+            services=services_provider,
+            current_admin_tg_id=admin_user_id,
             session=session,
-            category_key=category_key, entity_name=entity_name, page=page
+            all_system_permissions=all_system_permissions,
+            category_key=category_key,
+            entity_name=entity_name,
+            page=page,
+            locale=user_locale
         )
 
         if query.message:
@@ -210,7 +277,20 @@ async def _show_user_direct_perms_menu(
                     logger.warning(f"[{MODULE_NAME_FOR_LOG}] Ошибка edit_text (_show_user_direct_perms_menu): {e}")
             except Exception as e_edit:
                 logger.error(f"Непредвиденная ошибка в _show_user_direct_perms_menu: {e_edit}", exc_info=True)
-                if query.message: await query.answer("Ошибка отображения.", show_alert=True)
+                # Получаем язык пользователя для ошибки
+                user_locale_err = services_provider.config.core.i18n.default_locale
+                try:
+                    async with services_provider.db.get_session() as session:
+                        from Systems.core.database.core_models import User as DBUser
+                        from sqlalchemy import select
+                        result = await session.execute(select(DBUser).where(DBUser.telegram_id == query.from_user.id))
+                        db_user = result.scalar_one_or_none()
+                        if db_user and db_user.preferred_language_code:
+                            user_locale_err = db_user.preferred_language_code
+                except Exception:
+                    pass
+                admin_texts_err = get_admin_texts(services_provider, user_locale_err)
+                if query.message: await query.answer(admin_texts_err["admin_error_display"], show_alert=True)
 
 # Выход из FSM управления прямыми правами (если пользователь нажимает "К деталям пользователя")
 @user_direct_perms_router.callback_query(

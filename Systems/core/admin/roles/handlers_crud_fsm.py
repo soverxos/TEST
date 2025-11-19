@@ -11,8 +11,8 @@ from sqlalchemy import select, func as sql_func
 from aiogram.exceptions import TelegramBadRequest # <--- ИСПРАВЛЕН ИМПОРТ
 
 from Systems.core.ui.callback_data_factories import AdminRolesPanelNavigate
-from .keyboards_roles import get_admin_roles_list_keyboard_local, ROLES_MGMT_TEXTS 
-from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS 
+from .keyboards_roles import get_admin_roles_list_keyboard_local, ROLES_MGMT_TEXTS, get_roles_mgmt_texts
+from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_admin_texts 
 from Systems.core.admin.filters_admin import can_view_admin_panel_filter
 from Systems.core.rbac.service import PERMISSION_CORE_ROLES_CREATE, PERMISSION_CORE_ROLES_EDIT, PERMISSION_CORE_ROLES_DELETE, DEFAULT_ROLES_DEFINITIONS
 from Systems.core.database.core_models import Role as DBRole, UserRole
@@ -47,16 +47,31 @@ async def cq_admin_role_create_start_fsm(
     admin_user_id = query.from_user.id
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} инициировал создание новой роли (FSM).")
 
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+
     async with services_provider.db.get_session() as session:
         if not services_provider.config.core.super_admins or admin_user_id not in services_provider.config.core.super_admins:
             if not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_ROLES_CREATE):
-                await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True)
+                await query.answer(admin_texts["access_denied"], show_alert=True)
                 return
     
     await state.set_state(FSMAdminCreateRole.waiting_for_name)
     
-    text = (f"{ADMIN_COMMON_TEXTS.get('fsm_enter_role_name', 'Введите имя роли:')}\n\n"
-            f"{hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_cancel_role_creation', '/cancel_role_creation - Отменить'))}")
+    text = (f"{admin_texts.get('fsm_enter_role_name', 'Введите имя роли:')}\n\n"
+            f"{hitalic(admin_texts.get('fsm_command_cancel_role_creation', '/cancel_role_creation - Отменить'))}")
     
     if query.message:
         try:
@@ -66,7 +81,7 @@ async def cq_admin_role_create_start_fsm(
             await query.bot.send_message(query.from_user.id, text) 
         except Exception as e_fatal:
             logger.error(f"Критическая ошибка в cq_admin_role_create_start_fsm при edit/send: {e_fatal}")
-            await query.answer(ADMIN_COMMON_TEXTS["error_general"], show_alert=True)
+            await query.answer(admin_texts["error_general"], show_alert=True)
     else: 
         await query.bot.send_message(query.from_user.id, text) 
     await query.answer()
@@ -81,21 +96,36 @@ async def process_fsm_role_name_crud(
     admin_user_id = message.from_user.id
     role_name = message.text.strip() if message.text else ""
 
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+
     if not role_name:
-        await message.reply(ADMIN_COMMON_TEXTS.get('fsm_role_name_empty', 'Имя роли не может быть пустым.'))
+        await message.reply(admin_texts.get('fsm_role_name_empty', 'Имя роли не может быть пустым.'))
         return
 
     async with services_provider.db.get_session() as session:
         existing_role = await services_provider.rbac._get_role_by_name(session, role_name) 
         if existing_role:
-            await message.reply(ADMIN_COMMON_TEXTS.get('fsm_role_name_taken','Роль с именем "{role_name}" уже существует.').format(role_name=hcode(role_name)))
+            await message.reply(admin_texts.get('fsm_role_name_taken','Роль с именем "{role_name}" уже существует.').format(role_name=hcode(role_name)))
             return
             
     await state.update_data(new_role_name=role_name)
     await state.set_state(FSMAdminCreateRole.waiting_for_description)
     
-    text = (f"{ADMIN_COMMON_TEXTS.get('fsm_enter_role_description','Введите описание для роли {role_name}:').format(role_name=hcode(role_name))}\n\n"
-            f"{hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_skip_description','/skip_description - Пропустить'))} или {hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_cancel_role_creation','/cancel_role_creation - Отменить'))}")
+    text = (f"{admin_texts.get('fsm_enter_role_description','Введите описание для роли {role_name}:').format(role_name=hcode(role_name))}\n\n"
+            f"{hitalic(admin_texts.get('fsm_command_skip_description','/skip_description - Пропустить'))} или {hitalic(admin_texts.get('fsm_command_cancel_role_creation','/cancel_role_creation - Отменить'))}")
     await message.answer(text)
 
 
@@ -108,6 +138,22 @@ async def process_fsm_role_description_crud(
 ):
     admin_user_id = message.from_user.id
     
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    roles_texts = get_roles_mgmt_texts(services_provider, user_locale)
+    
     if message.text and message.text.lower() == "/skip_description": 
         role_description = None
     else:
@@ -118,7 +164,7 @@ async def process_fsm_role_description_crud(
 
     if not role_name: 
         logger.error(f"[{MODULE_NAME_FOR_LOG}] FSM: Не найдено имя роли в состоянии при получении описания.")
-        await message.answer(ADMIN_COMMON_TEXTS["error_general"])
+        await message.answer(admin_texts["error_general"])
         await state.clear()
         from .handlers_list import cq_admin_roles_list_entry 
         chat_id_for_reply = message.chat.id
@@ -135,24 +181,23 @@ async def process_fsm_role_description_crud(
             try:
                 await session.commit()
                 logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} успешно создал роль: '{role_name}'.")
-                await message.answer(ADMIN_COMMON_TEXTS.get('fsm_role_created_successfully','Роль "{role_name}" успешно создана!').format(role_name=hcode(role_name)))
+                await message.answer(admin_texts.get('fsm_role_created_successfully','Роль "{role_name}" успешно создана!').format(role_name=hcode(role_name)))
             except Exception as e_commit:
                 await session.rollback()
                 logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка commit при создании роли '{role_name}': {e_commit}", exc_info=True)
-                await message.answer("Ошибка при сохранении роли.")
+                await message.answer(admin_texts["admin_error_saving"])  # TODO: добавить более специфичное сообщение
         else:
-            await message.answer("Не удалось создать роль. Возможно, она уже существует или произошла ошибка.")
+            await message.answer(admin_texts["admin_error_saving"])  # TODO: добавить более специфичное сообщение
         
         await state.clear()
         
         # Отправляем обновленный список ролей
         from Systems.core.database.core_models import Role as DBRole
-        from .keyboards_roles import ROLES_MGMT_TEXTS, get_admin_roles_list_keyboard_local
         
         async with services_provider.db.get_session() as session:
             all_roles: List[DBRole] = await services_provider.rbac.get_all_roles(session)
-            text = f"{ROLES_MGMT_TEXTS['role_list_title']}\n{ROLES_MGMT_TEXTS['role_list_select_action']}"
-            keyboard = await get_admin_roles_list_keyboard_local(all_roles, services_provider, message.from_user.id, session)
+            text = f"{roles_texts['role_list_title']}\n{roles_texts['role_list_select_action']}"
+            keyboard = await get_admin_roles_list_keyboard_local(all_roles, services_provider, message.from_user.id, session, locale=user_locale)
             
             await message.bot.send_message(message.chat.id, text, reply_markup=keyboard)
 
@@ -164,10 +209,26 @@ async def cancel_create_role_fsm_command(
     bot: Bot
 ):
     admin_user_id = message.from_user.id
+    
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+    
     current_fsm_state = await state.get_state()
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Администратор {admin_user_id} отменил создание роли из состояния {current_fsm_state} командой.")
     await state.clear()
-    await message.answer(ADMIN_COMMON_TEXTS.get('fsm_role_creation_cancelled', "Создание роли отменено."))
+    await message.answer(admin_texts.get('fsm_role_creation_cancelled', "Создание роли отменено."))
     
     from .handlers_list import cq_admin_roles_list_entry
     chat_id_for_reply = message.chat.id
@@ -188,8 +249,23 @@ async def cq_admin_role_edit_start_fsm(
     admin_user_id = query.from_user.id
     role_id_to_edit = callback_data.item_id
 
+    # Получаем язык пользователя
+    user_locale = services_provider.config.core.i18n.default_locale
+    try:
+        async with services_provider.db.get_session() as session:
+            from Systems.core.database.core_models import User as DBUser
+            from sqlalchemy import select
+            result = await session.execute(select(DBUser).where(DBUser.telegram_id == admin_user_id))
+            db_user = result.scalar_one_or_none()
+            if db_user and db_user.preferred_language_code:
+                user_locale = db_user.preferred_language_code
+    except Exception:
+        pass
+    
+    admin_texts = get_admin_texts(services_provider, user_locale)
+
     if role_id_to_edit is None or not str(role_id_to_edit).isdigit(): 
-        await query.answer("Ошибка: ID роли для редактирования не указан или некорректен.", show_alert=True); return
+        await query.answer(admin_texts["admin_error_role_id_invalid"], show_alert=True); return
     
     role_id_to_edit = int(str(role_id_to_edit)) 
 
@@ -198,11 +274,11 @@ async def cq_admin_role_edit_start_fsm(
     async with services_provider.db.get_session() as session:
         if not services_provider.config.core.super_admins or admin_user_id not in services_provider.config.core.super_admins:
             if not await services_provider.rbac.user_has_permission(session, admin_user_id, PERMISSION_CORE_ROLES_EDIT):
-                await query.answer(ADMIN_COMMON_TEXTS["access_denied"], show_alert=True); return
+                await query.answer(admin_texts["access_denied"], show_alert=True); return
         
         role_to_edit = await session.get(DBRole, role_id_to_edit)
         if not role_to_edit:
-            await query.answer(ADMIN_COMMON_TEXTS["not_found_generic"], show_alert=True); return
+            await query.answer(admin_texts["not_found_generic"], show_alert=True); return
 
         await state.update_data(
             editing_role_id=role_to_edit.id,
@@ -210,18 +286,18 @@ async def cq_admin_role_edit_start_fsm(
             current_role_description=role_to_edit.description or "" 
         )
 
-        title_text = ADMIN_COMMON_TEXTS.get('fsm_edit_role_title','Редактирование роли: {role_name}').format(role_name=hcode(role_to_edit.name))
+        title_text = admin_texts.get('fsm_edit_role_title','Редактирование роли: {role_name}').format(role_name=hcode(role_to_edit.name))
         
         if role_to_edit.name in DEFAULT_ROLES_DEFINITIONS:
             await state.set_state(FSMAdminEditRole.waiting_for_new_description)
             prompt_text = (f"{title_text}\n"
-                           f"{ADMIN_COMMON_TEXTS.get('fsm_edit_role_name_not_allowed','Имя стандартной роли {role_name} изменять нельзя.').format(role_name=hcode(role_to_edit.name))}\n\n"
-                           f"{ADMIN_COMMON_TEXTS.get('fsm_enter_new_role_description','Введите новое описание для роли {role_name} (текущее: {current_description}):').format(role_name=hcode(role_to_edit.name), current_description=hitalic(role_to_edit.description or 'пусто'))}\n\n"
-                           f"{hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_skip_description','/skip_description - Пропустить'))} или {hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_cancel_role_edit','/cancel_role_edit - Отменить'))}")
+                           f"{admin_texts.get('fsm_edit_role_name_not_allowed','Имя стандартной роли {role_name} изменять нельзя.').format(role_name=hcode(role_to_edit.name))}\n\n"
+                           f"{admin_texts.get('fsm_enter_new_role_description','Введите новое описание для роли {role_name} (текущее: {current_description}):').format(role_name=hcode(role_to_edit.name), current_description=hitalic(role_to_edit.description or 'пусто'))}\n\n"
+                           f"{hitalic(admin_texts.get('fsm_command_skip_description','/skip_description - Пропустить'))} или {hitalic(admin_texts.get('fsm_command_cancel_role_edit','/cancel_role_edit - Отменить'))}")
         else:
             await state.set_state(FSMAdminEditRole.waiting_for_new_name)
             prompt_text = (f"{title_text}\n"
-                           f"{ADMIN_COMMON_TEXTS.get('fsm_enter_new_role_name','Введите новое имя для роли (текущее: {current_name}):').format(current_name=hcode(role_to_edit.name))}\n\n"
+                           f"{admin_texts.get('fsm_enter_new_role_name','Введите новое имя для роли (текущее: {current_name}):').format(current_name=hcode(role_to_edit.name))}\n\n"
                            f"{hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_skip_name','/skip_name - Оставить как есть'))} или {hitalic(ADMIN_COMMON_TEXTS.get('fsm_command_cancel_role_edit','/cancel_role_edit - Отменить'))}")
     
     if query.message:
