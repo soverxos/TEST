@@ -4,7 +4,7 @@ cache:
 module_repo:
   index_url: https://raw.githubusercontent.com/soverxos/SwiftDevBot-Modules/main/modules_index.json
 core:
-  project_data_path: /root/SwiftDevBot-Project/Data
+  # project_data_path: /root/SwiftDevBot-Project/Data
   enabled_modules_config_path: Config/enabled_modules.json
   log_level: INFO
   log_to_file: true
@@ -15,11 +15,11 @@ core:
   setup_bot_commands_on_startup: true
   enable_startup_shutdown_notifications: true
   i18n:
-    locales_dir: /root/SwiftDevBot-Project/Systems/locales
+    # locales_dir: /root/SwiftDevBot-Project/Systems/locales
     domain: bot
     default_locale: ru
     available_locales:
     - ru
     - en
     - ua
-project_root: /root/SwiftDevBot-Project
+# project_root: /root/SwiftDevBot-Project

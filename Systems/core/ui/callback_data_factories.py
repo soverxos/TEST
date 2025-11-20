@@ -22,6 +22,8 @@ class CoreServiceAction(CallbackData, prefix=f"{CORE_CALLBACK_PREFIX}_service"):
         "close_menu_silently",
         "confirm_registration", 
         "cancel_registration",
+        "confirm_reset_password",
+        "cancel_reset_password",
     ]
 
 # --- Фабрики для Админ-панели ---

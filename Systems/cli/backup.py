@@ -7,7 +7,7 @@ import subprocess
 import tarfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from typing import Tuple as TypingTuple
 from urllib.parse import urlparse
 
@@ -1670,7 +1670,7 @@ def diff_backup(
     
     console.print(f"\n[green]✅ Сравнение завершено[/]")
 
-def _resolve_backup_path(backup_path: str|Path) -> Path:
+def _resolve_backup_path(backup_path: Union[str, Path]) -> Path:
     """Определяет абсолютный путь к бэкапу по имени или относительному/абсолютному пути."""
     p = Path(backup_path)
     if p.exists():

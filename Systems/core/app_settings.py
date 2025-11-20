@@ -23,6 +23,7 @@ from pydantic.networks import PostgresDsn, MySQLDsn, AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+print(f"DEBUG: PROJECT_ROOT_DIR = {PROJECT_ROOT_DIR}")
 ENV_FILENAME = ".env"
 DEFAULT_PROJECT_DATA_DIR_NAME = "Data" 
 USER_CONFIG_DIR_NAME = "Config" 

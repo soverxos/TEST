@@ -164,3 +164,4 @@ Thumbs.db
 *.bak
 *.backup
 TOKEN-ID.txt
+!Systems/web/src/lib/

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, BotStats } from '../../lib/api';
+import { api, BotStats } from '../../api';
 import { GlassCard } from '../ui/GlassCard';
 import { Activity, Users, Zap, TrendingUp } from 'lucide-react';
 

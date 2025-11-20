@@ -1,0 +1,23 @@
+name: "ai_chat"
+version: "1.0.0"
+display_name: "AI Chat"
+description: "AI-powered chat assistant using mock or real API"
+author: "SwiftDevBot Team"
+license: "MIT"
+
+permissions:
+  - name: "ai_chat.use"
+    description: "Allow user to use AI chat"
+    default_roles: ["User", "Admin"]
+
+settings:
+  provider:
+    type: "string"
+    label: "AI Provider"
+    default: "mock"
+    description: "AI Provider (mock, openai, gemini)"
+  api_key:
+    type: "string"
+    label: "API Key"
+    default: ""
+    description: "API Key for the provider"

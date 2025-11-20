@@ -276,13 +276,16 @@ async def handle_login_command(
             elif role_names:
                 primary_role = role_names[0].lower()
         
-        # Создаем JWT токен с временем жизни 5 минут
+        # Получаем время жизни токена из переменной окружения (по умолчанию 60 минут)
+        token_lifetime_minutes = int(os.environ.get("SDB_WEB_TOKEN_LIFETIME_MINUTES", "60"))
+        
+        # Создаем JWT токен
         jwt_handler = get_jwt_handler()
         login_token = await jwt_handler.create_access_token(
             user_id=sdb_user.telegram_id,
             username=sdb_user.username or sdb_user.full_name,
             role=primary_role or "user",  # lowercase по умолчанию
-            expires_in=timedelta(minutes=5)
+            expires_in=timedelta(minutes=token_lifetime_minutes)
         )
         
         logger.info(f"[{MODULE_NAME_FOR_LOG}] Создан JWT токен для пользователя {sdb_user.telegram_id} с ролью: {primary_role or 'user'}")
@@ -319,11 +322,17 @@ async def handle_login_command(
                     # Если всё равно localhost, используем IP из .env или отправляем токен текстом
                     if local_ip in ["127.0.0.1", "127.0.1.1"]:
                         # Отправляем токен текстом вместо кнопки
+                        # Форматируем время жизни токена
+                        if token_lifetime_minutes >= 60:
+                            time_str = f"{token_lifetime_minutes // 60} час" + ("а" if token_lifetime_minutes // 60 > 1 else "")
+                        else:
+                            time_str = f"{token_lifetime_minutes} минут"
+                        
                         login_text = (
                             f"{hbold('🌐 Вход в веб-панель')}\n\n"
                             f"Скопируйте ссылку ниже и откройте в браузере:\n\n"
                             f"{hcode(f'http://localhost:{web_port}/?token={login_token}')}\n\n"
-                            f"{hitalic('Ссылка действительна 5 минут.')}"
+                            f"{hitalic(f'Ссылка действительна {time_str}.')}"
                         )
                         await message.answer(login_text)
                         logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} запросил вход в веб-панель. Токен отправлен текстом (localhost).")
@@ -333,11 +342,17 @@ async def handle_login_command(
             except Exception as e:
                 logger.warning(f"[{MODULE_NAME_FOR_LOG}] Не удалось определить IP для URL: {e}. Используется текстовый формат.")
                 # Отправляем токен текстом
+                # Форматируем время жизни токена
+                if token_lifetime_minutes >= 60:
+                    time_str = f"{token_lifetime_minutes // 60} час" + ("а" if token_lifetime_minutes // 60 > 1 else "")
+                else:
+                    time_str = f"{token_lifetime_minutes} минут"
+                
                 login_text = (
                     f"{hbold('🌐 Вход в веб-панель')}\n\n"
                     f"Скопируйте ссылку ниже и откройте в браузере:\n\n"
                     f"{hcode(f'http://localhost:{web_port}/login?token={login_token}')}\n\n"
-                    f"{hitalic('Ссылка действительна 5 минут.')}"
+                    f"{hitalic(f'Ссылка действительна {time_str}.')}"
                 )
                 await message.answer(login_text)
                 logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} запросил вход в веб-панель. Токен отправлен текстом (ошибка определения IP).")
@@ -352,10 +367,16 @@ async def handle_login_command(
         ])
         
         # Отправляем сообщение
+        # Форматируем время жизни токена
+        if token_lifetime_minutes >= 60:
+            time_str = f"{token_lifetime_minutes // 60} час" + ("а" if token_lifetime_minutes // 60 > 1 else "")
+        else:
+            time_str = f"{token_lifetime_minutes} минут"
+        
         login_text = (
             f"{hbold('🌐 Вход в веб-панель')}\n\n"
             f"Нажмите на кнопку ниже, чтобы войти в веб-панель.\n"
-            f"{hitalic('Ссылка действительна 5 минут.')}"
+            f"{hitalic(f'Ссылка действительна {time_str}.')}"
         )
         
         await message.answer(login_text, reply_markup=keyboard)
@@ -367,6 +388,147 @@ async def handle_login_command(
             f"{hbold('❌ Ошибка')}\n\n"
             f"Не удалось создать ссылку для входа. Попробуйте позже."
         )
+
+
+@core_ui_router.message(Command("reset_password"))
+async def handle_reset_password_command(
+    message: types.Message,
+    bot: Bot,
+    services_provider: 'BotServicesProvider',
+    sdb_user: DBUser,
+):
+    """Обработчик команды /reset_password - сброс облачного пароля."""
+    user_tg = message.from_user
+    if not user_tg:
+        return
+    
+    try:
+        from pathlib import Path
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        # Проверяем, существует ли облачный пароль
+        config_dir = Path(__file__).parent.parent.parent.parent / "config"
+        cloud_password_file = config_dir / f"cloud_password_{sdb_user.telegram_id}.txt"
+        
+        if not cloud_password_file.exists():
+            await message.answer(
+                f"{hbold('ℹ️ Облачный пароль не установлен')}\\n\\n"
+                f"У вас ещё нет облачного пароля. Войдите в веб-панель через /login, "
+                f"и система предложит вам создать новый пароль."
+            )
+            logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} попытался сбросить несуществующий пароль.")
+            return
+        
+        # Создаем кнопки подтверждения
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Да, сбросить",
+                    callback_data=CoreServiceAction(action="confirm_reset_password").pack()
+                ),
+                InlineKeyboardButton(
+                    text="❌ Отмена",
+                    callback_data=CoreServiceAction(action="cancel_reset_password").pack()
+                )
+            ]
+        ])
+        
+        # Отправляем сообщение с подтверждением
+        reset_text = (
+            f"{hbold('🔐 Сброс облачного пароля')}\\n\\n"
+            f"Вы уверены, что хотите сбросить облачный пароль?\\n\\n"
+            f"{hitalic('После сброса вам нужно будет создать новый пароль при следующем входе в веб-панель.')}"
+        )
+        
+        await message.answer(reset_text, reply_markup=keyboard)
+        logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {sdb_user.telegram_id} запросил сброс облачного пароля.")
+        
+    except Exception as e:
+        logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка при обработке команды /reset_password для пользователя {sdb_user.telegram_id}: {e}", exc_info=True)
+        await message.answer(
+            f"{hbold('❌ Ошибка')}\\n\\n"
+            f"Не удалось обработать запрос на сброс пароля. Попробуйте позже."
+        )
+
+
+@core_ui_router.callback_query(CoreServiceAction.filter(F.action == "confirm_reset_password"))
+async def cq_confirm_reset_password(
+    query: types.CallbackQuery,
+    bot: Bot,
+    services_provider: 'BotServicesProvider',
+    sdb_user: DBUser,
+):
+    """Подтверждение сброса облачного пароля."""
+    user_id = sdb_user.telegram_id
+    logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} подтвердил сброс облачного пароля.")
+    
+    try:
+        from pathlib import Path
+        import os
+        
+        # Удаляем файл с паролем
+        config_dir = Path(__file__).parent.parent.parent.parent / "config"
+        cloud_password_file = config_dir / f"cloud_password_{user_id}.txt"
+        
+        if cloud_password_file.exists():
+            os.remove(cloud_password_file)
+            logger.success(f"[{MODULE_NAME_FOR_LOG}] Облачный пароль для пользователя {user_id} успешно удалён.")
+            
+            success_text = (
+                f"{hbold('✅ Пароль сброшен')}\\n\\n"
+                f"Облачный пароль успешно удалён.\\n\\n"
+                f"При следующем входе в веб-панель через /login "
+                f"вам будет предложено создать новый пароль."
+            )
+            
+            if query.message:
+                try:
+                    await query.message.edit_text(success_text)
+                except Exception:
+                    await bot.send_message(user_id, success_text)
+            else:
+                await bot.send_message(user_id, success_text)
+                
+            await query.answer("Пароль сброшен", show_alert=False)
+        else:
+            logger.warning(f"[{MODULE_NAME_FOR_LOG}] Файл пароля для пользователя {user_id} не найден при попытке удаления.")
+            await query.answer("Пароль уже был удалён", show_alert=True)
+            
+            if query.message:
+                try:
+                    await query.message.delete()
+                except Exception:
+                    pass
+                    
+    except Exception as e:
+        logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка при удалении облачного пароля для пользователя {user_id}: {e}", exc_info=True)
+        await query.answer("Ошибка при сбросе пароля", show_alert=True)
+
+
+@core_ui_router.callback_query(CoreServiceAction.filter(F.action == "cancel_reset_password"))
+async def cq_cancel_reset_password(
+    query: types.CallbackQuery,
+    bot: Bot,
+):
+    """Отмена сброса облачного пароля."""
+    user_id = query.from_user.id if query.from_user else 0
+    logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} отменил сброс облачного пароля.")
+    
+    cancel_text = (
+        f"{hbold('❌ Отменено')}\\n\\n"
+        f"Сброс облачного пароля отменён. Ваш текущий пароль остался без изменений."
+    )
+    
+    if query.message:
+        try:
+            await query.message.edit_text(cancel_text)
+        except Exception:
+            await bot.send_message(user_id, cancel_text)
+    else:
+        await bot.send_message(user_id, cancel_text)
+        
+    await query.answer()
+
 
 
 @core_ui_router.callback_query(CoreServiceAction.filter(F.action == "confirm_registration"))

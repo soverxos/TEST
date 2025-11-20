@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { api, User, Profile } from '../lib/api';
+import { api, User, Profile } from '../api';
 
 type AuthContextType = {
   user: User | null;
@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('sdb_user', JSON.stringify(response.user));
       localStorage.setItem('sdb_token', response.token);
       console.log('Token saved to localStorage:', response.token ? 'yes' : 'no');
-      
+
       // Check if cloud password is setup (async, don't block)
       api.checkCloudPasswordSetup()
         .then(result => {
@@ -99,12 +99,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Check for token in URL (from Telegram bot)
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    
+
     if (token) {
       // Remove token from URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
-      
+
       // Try to login with token
       signInWithToken(token).catch((error) => {
         console.error('Token login failed:', error);
@@ -114,11 +114,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       return;
     }
-    
+
     // Check for saved session
     const savedUser = localStorage.getItem('sdb_user');
     const cloudPasswordVerified = localStorage.getItem('sdb_cloud_password_verified');
-    
+
     if (savedUser && cloudPasswordVerified === 'true') {
       try {
         const userData = JSON.parse(savedUser);
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           role: userData.role,
         });
         setCloudPasswordVerified(true);
-        
+
         // Check cloud password setup status
         api.checkCloudPasswordSetup()
           .then(result => setCloudPasswordSetup(result.isSetup))
@@ -156,7 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           username: userData.username,
           role: userData.role,
         });
-        
+
         // Check cloud password setup status
         api.checkCloudPasswordSetup()
           .then(result => setCloudPasswordSetup(result.isSetup))
@@ -198,18 +198,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Check for admin role - handle various cases
-  const isAdminValue = profile?.role?.toLowerCase() === 'admin' || 
-                       profile?.role === 'admin' || 
-                       profile?.role === 'Admin' ||
-                       profile?.role === 'SUPERADMIN' ||
-                       profile?.role?.toLowerCase() === 'superadmin';
-  
+  const isAdminValue = profile?.role?.toLowerCase() === 'admin' ||
+    profile?.role === 'admin' ||
+    profile?.role === 'Admin' ||
+    profile?.role === 'SUPERADMIN' ||
+    profile?.role?.toLowerCase() === 'superadmin';
+
   // Debug logging
   console.log('AuthContext - profile:', profile);
   console.log('AuthContext - profile.role:', profile?.role);
   console.log('AuthContext - isAdmin:', isAdminValue);
   console.log('AuthContext - user:', user);
-  
+
   const value = {
     user,
     profile,

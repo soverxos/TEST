@@ -39,21 +39,21 @@ jobs:
     - name: Lint with pylint
       run: |
         pip install pylint
-        pylint Systems/core --disable=all --enable=E,F --exit-zero || true
+        pylint Systems/core Modules --disable=all --enable=E,F --exit-zero || true
     
     - name: Format check with black
       run: |
         pip install black
-        black --check Systems/core || true
+        black --check Systems/core Modules || true
     
     - name: Type check with mypy
       run: |
         pip install mypy
-        mypy Systems/core --ignore-missing-imports || true
+        mypy Systems/core Modules --ignore-missing-imports || true
     
     - name: Test with pytest
       run: |
-        pytest --cov=Systems/core --cov-report=xml --cov-report=term-missing || true
+        pytest --cov=Systems/core --cov=Modules --cov-report=xml --cov-report=term-missing || true
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

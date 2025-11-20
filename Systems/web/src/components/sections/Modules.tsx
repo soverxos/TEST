@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, BotModule } from '../../lib/api';
+import { api, BotModule } from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import { GlassCard } from '../ui/GlassCard';
 import { GlassButton } from '../ui/GlassButton';

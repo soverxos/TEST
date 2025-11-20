@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, BotLog } from '../../lib/api';
+import { api, BotLog } from '../../api';
 import { GlassCard } from '../ui/GlassCard';
 import { AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 
