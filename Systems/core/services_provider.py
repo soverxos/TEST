@@ -84,7 +84,8 @@ class BotServicesProvider:
                 # Для SQLite используем простой способ проверки через sqlite_master
                 async with self._db_manager._engine.begin() as conn:
                     result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'sdb_%'"))
-                    existing_tables = [row[0] for row in result.fetchall()]
+                    rows = await result.fetchall()
+                    existing_tables = [row[0] for row in rows]
             else:
                 # Для PostgreSQL/MySQL используем inspect через sync_engine
                 inspector = inspect(self._db_manager._engine.sync_engine)

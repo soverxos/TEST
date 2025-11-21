@@ -12,20 +12,20 @@ class Translator:
     Формат: key = value в YAML файлах.
     """
     def __init__(
-        self, 
-        locales_dir: Path, 
-        domain: str = "bot", # Имя домена переводов (не используется для YAML, но оставлено для совместимости)
-        default_locale: str = "ru", 
-        available_locales: Optional[List[str]] = None
+        self,
+        locales_dir: Path,
+        domain: str = "bot",  # Имя домена переводов (не используется для YAML, но оставлено для совместимости)
+        default_locale: str = "ru",
+        available_locales: Optional[List[str]] = None,
     ):
         """
         Инициализирует транслятор.
 
         Args:
-            locales_dir: Путь к директории 'locales' (где лежат файлы en.yaml, ua.yaml, ru.yaml).
+            locales_dir: Путь к директории 'locales' (где лежат файлы en.yaml, uk.yaml, ru.yaml).
             domain: Имя домена переводов (не используется для YAML, оставлено для совместимости).
             default_locale: Язык по умолчанию, если перевод для языка пользователя не найден.
-            available_locales: Список поддерживаемых языков (например, ['en', 'ua', 'ru']).
+            available_locales: Список поддерживаемых языков (например, ['en', 'uk', 'ru']).
                                Если None, попытается определить из YAML файлов в locales_dir.
         """
         self.locales_dir = locales_dir
@@ -41,7 +41,7 @@ class Translator:
             if self.locales_dir.is_dir():
                 for item in self.locales_dir.iterdir():
                     if item.is_file() and item.suffix == ".yaml":
-                        locale_name = item.stem  # Имя файла без расширения (en, ua, ru)
+                        locale_name = item.stem  # Имя файла без расширения (en, uk, ru)
                         self.available_locales.append(locale_name)
             if not self.available_locales:
                  logger.warning(f"Не найдены YAML файлы переводов в {self.locales_dir}. "
@@ -110,7 +110,7 @@ class Translator:
 
         Args:
             message_key: Ключ перевода (например, "main_menu_title")
-            locale: Код языка (например, "en", "ua", "ru")
+            locale: Код языка (например, "en", "uk", "ru")
             **kwargs: Параметры для форматирования строки
 
         Returns:

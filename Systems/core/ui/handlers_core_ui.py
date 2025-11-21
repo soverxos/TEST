@@ -9,7 +9,7 @@ from loguru import logger
 from aiogram.exceptions import TelegramBadRequest 
 from aiogram.types import ReplyKeyboardRemove 
 
-from .callback_data_factories import CoreMenuNavigate, ModuleMenuEntry, CoreServiceAction 
+from .callback_data_factories import CoreMenuNavigate, ModuleMenuEntry, ModuleAction, CoreServiceAction 
 from .keyboards_core import (
     get_main_menu_reply_keyboard,
     get_modules_list_keyboard, 
@@ -23,7 +23,7 @@ from Systems.core.ui.registry_ui import ModuleUIEntry
 from sqlalchemy import select 
 from Systems.core.i18n.translator import Translator 
 
-from typing import TYPE_CHECKING, Optional, List, Union
+from typing import TYPE_CHECKING, Optional, List, Union, Dict
 if TYPE_CHECKING:
     from Systems.core.services_provider import BotServicesProvider
     from sqlalchemy.ext.asyncio import AsyncSession 
@@ -114,18 +114,23 @@ async def handle_start_command(
     message: types.Message,
     bot: Bot, 
     services_provider: 'BotServicesProvider',
-    sdb_user: DBUser, 
+    sdb_user: Optional[DBUser], 
     state: FSMContext, 
     user_was_just_created: Optional[bool] = False 
 ):
     user_tg = message.from_user 
     if not user_tg: return
 
+    sdb_user_id = sdb_user.id if sdb_user else "N/A"
     logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_tg.id} (@{user_tg.username or 'N/A'}) вызвал /start. "
-                f"SDB_User DB ID: {sdb_user.id}. Был только что создан (в middleware): {user_was_just_created}.")
+                f"SDB_User DB ID: {sdb_user_id}. Был только что создан (в middleware): {user_was_just_created}.")
 
     # Получаем язык пользователя
-    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    user_locale = (
+        (sdb_user.preferred_language_code if sdb_user else None)
+        or message.from_user.language_code
+        or services_provider.config.core.i18n.default_locale
+    )
     
     # Получаем переводы
     translator = _get_translator_for_handler(services_provider)
@@ -133,6 +138,16 @@ async def handle_start_command(
     def t(key: str, **kwargs) -> str:
         return translator.gettext(key, user_locale, **kwargs)
     
+    if not sdb_user:
+        user_display_name = f"{user_tg.first_name} {user_tg.last_name or ''}".strip() or user_tg.username or str(user_tg.id)
+        logger.info(f"[{MODULE_NAME_FOR_LOG}] Новый пользователь {user_tg.id}. Показ приветственного сообщения.")
+        welcome_title = t("welcome_message_title")
+        welcome_body = t("welcome_message_body")
+        full_welcome_text = f"{hbold(welcome_title)}\n\n{welcome_body}"
+        welcome_keyboard = get_welcome_confirmation_keyboard(locale=user_locale, services_provider=services_provider)
+        await message.answer(full_welcome_text, reply_markup=welcome_keyboard)
+        return
+
     is_owner_from_config = sdb_user.telegram_id in services_provider.config.core.super_admins
     user_display_name = sdb_user.full_name 
 
@@ -390,6 +405,155 @@ async def handle_login_command(
         )
 
 
+@core_ui_router.message(F.text.startswith("/"))
+async def handle_module_command_fallback(
+    message: types.Message,
+    bot: Bot,
+    services_provider: 'BotServicesProvider',
+    sdb_user: DBUser
+):
+    """
+    Универсальный обработчик команд модулей.
+    Показывает UI модуля, если команда найдена в манифесте модуля.
+    Этот обработчик имеет низкий приоритет, поэтому модули могут переопределить его.
+    """
+    command_text = message.text
+    if not command_text:
+        return  # Не команда
+    
+    # Извлекаем имя команды (без /)
+    command_name = command_text.split()[0].lstrip("/").split("@")[0]
+    
+    # Пропускаем команды ядра
+    core_commands = ["start", "help", "login", "reset_password", "cancel_feedback"]
+    if command_name in core_commands:
+        return  # Это команда ядра, пропускаем
+    
+    # Ищем команду в манифестах модулей
+    all_loaded_modules_info = services_provider.modules.get_loaded_modules_info(include_system=False, include_plugins=True)
+    
+    for module_info in all_loaded_modules_info:
+        if not module_info.manifest or not module_info.manifest.commands:
+            continue
+        
+        for cmd_manifest in module_info.manifest.commands:
+            if cmd_manifest.command == command_name:
+                # Найдена команда модуля - показываем UI модуля
+                logger.debug(f"[{MODULE_NAME_FOR_LOG}] User {sdb_user.telegram_id} called module command /{command_name}, showing module UI")
+                
+                # Проверяем права доступа
+                async with services_provider.db.get_session() as session:
+                    # Проверка admin_only
+                    if cmd_manifest.admin_only:
+                        is_super_admin = sdb_user.telegram_id in services_provider.config.core.super_admins
+                        if not is_super_admin:
+                            has_admin_permission = await services_provider.rbac.user_has_permission(
+                                session, sdb_user.telegram_id, "core.view_admin_panel"
+                            )
+                            if not has_admin_permission:
+                                await message.answer("❌ У вас нет прав администратора для этой команды")
+                                return
+                    
+                    # Проверка разрешений модуля
+                    if module_info.manifest.declared_permissions:
+                        first_permission = module_info.manifest.declared_permissions[0]
+                        has_permission = await services_provider.rbac.user_has_permission(
+                            session, sdb_user.telegram_id, first_permission.name
+                        )
+                        if not has_permission:
+                            await message.answer("❌ У вас нет прав для использования этой команды")
+                            return
+                
+                # Показываем UI модуля через callback (симулируем нажатие на кнопку модуля)
+                from .callback_data_factories import ModuleMenuEntry
+                from aiogram.types import CallbackQuery
+                
+                # Создаем фиктивный callback query для показа UI модуля
+                # Но лучше просто вызвать функцию показа UI модуля напрямую
+                module_entry = services_provider.ui_registry.get_module_entry(module_info.name)
+                if module_entry:
+                    # Показываем UI модуля
+                    from aiogram.types import InlineKeyboardButton, InlineKeyboardBuilder
+                    
+                    icon = module_entry.icon or "🧩"
+                    display_name = module_entry.display_name or module_info.name
+                    description = module_entry.description or (module_info.manifest.description if module_info.manifest else "Модуль активен")
+                    version = module_info.manifest.version if module_info.manifest else "N/A"
+                    
+                    # Получаем команды модуля
+                    commands = []
+                    async with services_provider.db.get_session() as session:
+                        is_super_admin = sdb_user.telegram_id in services_provider.config.core.super_admins
+                        for cmd in module_info.manifest.commands:
+                            if cmd.admin_only:
+                                if not is_super_admin:
+                                    has_admin_permission = await services_provider.rbac.user_has_permission(
+                                        session, sdb_user.telegram_id, "core.view_admin_panel"
+                                    )
+                                    if not has_admin_permission:
+                                        continue
+                            
+                            if module_info.manifest.declared_permissions:
+                                first_permission = module_info.manifest.declared_permissions[0]
+                                has_permission = await services_provider.rbac.user_has_permission(
+                                    session, sdb_user.telegram_id, first_permission.name
+                                )
+                                if not has_permission:
+                                    continue
+                            
+                            commands.append(cmd)
+                    
+                    if commands:
+                        text = (
+                            f"{icon} **{display_name}**\n\n"
+                            f"{description}\n\n"
+                            f"📊 **Информация:**\n"
+                            f"• Версия: {version}\n"
+                            f"• Статус: {'✅ Активен' if module_info.is_loaded_successfully else '❌ Не загружен'}\n\n"
+                            f"🎯 **Доступные действия:**\n"
+                            f"Выберите действие из списка ниже:"
+                        )
+                    else:
+                        text = (
+                            f"{icon} **{display_name}**\n\n"
+                            f"{description}\n\n"
+                            f"📊 **Информация:**\n"
+                            f"• Версия: {version}\n"
+                            f"• Статус: {'✅ Активен' if module_info.is_loaded_successfully else '❌ Не загружен'}\n\n"
+                            f"💡 Модуль не имеет доступных команд или у вас нет прав для их использования."
+                        )
+                    
+                    builder = InlineKeyboardBuilder()
+                    
+                    if commands:
+                        for cmd in commands:
+                            cmd_icon = cmd.icon or "⚙️"
+                            cmd_text = f"{cmd_icon} {cmd.description or cmd.command}"
+                            builder.row(
+                                InlineKeyboardButton(
+                                    text=cmd_text,
+                                    callback_data=ModuleAction(
+                                        module_name=module_info.name,
+                                        command=cmd.command,
+                                        action="execute"
+                                    ).pack()
+                                )
+                            )
+                    
+                    builder.row(
+                        InlineKeyboardButton(
+                            text="🔙 Назад к модулям",
+                            callback_data=CoreMenuNavigate(target_menu="modules_list").pack()
+                        )
+                    )
+                    keyboard = builder.as_markup()
+                    
+                    await message.answer(text, reply_markup=keyboard, parse_mode="Markdown")
+                    return
+    
+    # Команда не найдена в модулях - ничего не делаем (модуль может обработать её сам)
+
+
 @core_ui_router.message(Command("reset_password"))
 async def handle_reset_password_command(
     message: types.Message,
@@ -536,12 +700,23 @@ async def cq_confirm_registration_and_show_main_menu(
     query: types.CallbackQuery, 
     bot: Bot, 
     services_provider: 'BotServicesProvider',
-    sdb_user: DBUser,
+    sdb_user: Optional[DBUser],
     state: FSMContext 
 ):
-    user_id = sdb_user.telegram_id 
-    user_full_name = sdb_user.full_name
-    logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} ({user_full_name}) подтвердил регистрацию, показ главного reply-меню.")
+    user_id = query.from_user.id
+    user_full_name = query.from_user.full_name
+    logger.info(f"[{MODULE_NAME_FOR_LOG}] Пользователь {user_id} подтвердил регистрацию, показ главного reply-меню.")
+
+    if not sdb_user:
+        try:
+            sdb_user, created_flag = await services_provider.user_service.process_user_on_start(query.from_user)
+            if not sdb_user:
+                await query.answer("Ошибка создания профиля. Попробуйте снова.", show_alert=True)
+                return
+        except Exception as e_create:
+            logger.error(f"[{MODULE_NAME_FOR_LOG}] Не удалось создать пользователя при подтверждении: {e_create}", exc_info=True)
+            await query.answer("Ошибка создания профиля. Обратитесь к администратору.", show_alert=True)
+            return
     
     if query.message:
         try:
@@ -1046,3 +1221,286 @@ async def cq_service_action_delete_message(query: types.CallbackQuery):
     except Exception as e:
         logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка при удалении сообщения {message_id} для user {user_id}: {e}", exc_info=True)
         await query.answer("Ошибка при удалении сообщения.", show_alert=True)
+
+
+@core_ui_router.callback_query(ModuleMenuEntry.filter())
+async def cq_module_entry_default(
+    query: types.CallbackQuery,
+    callback_data: ModuleMenuEntry,
+    bot: Bot,
+    services_provider: 'BotServicesProvider',
+    sdb_user: DBUser
+):
+    """
+    Универсальный обработчик для входа в модуль через UI.
+    Этот обработчик работает как fallback, если модуль не зарегистрировал свой собственный обработчик.
+    Модули могут переопределить этот обработчик, зарегистрировав свой с более высоким приоритетом.
+    """
+    user_id = sdb_user.telegram_id
+    module_name = callback_data.module_name
+    
+    logger.debug(f"[{MODULE_NAME_FOR_LOG}] User {user_id} requested entry to module '{module_name}'")
+    
+    # Получаем информацию о модуле из UIRegistry
+    module_entry = services_provider.ui_registry.get_module_entry(module_name)
+    if not module_entry:
+        logger.warning(f"[{MODULE_NAME_FOR_LOG}] Module entry '{module_name}' not found in UIRegistry")
+        await query.answer("❌ Модуль не найден", show_alert=True)
+        return
+    
+    # Проверяем разрешения, если требуется
+    if module_entry.required_permission_to_view:
+        async with services_provider.db.get_session() as session:
+            has_permission = await services_provider.rbac.user_has_permission(
+                session, user_id, module_entry.required_permission_to_view
+            )
+            if not has_permission:
+                await query.answer("❌ У вас нет доступа к этому модулю", show_alert=True)
+                return
+    
+    # Получаем информацию о модуле из ModuleLoader
+    module_info = services_provider.modules.get_module_info(module_name)
+    if not module_info:
+        logger.warning(f"[{MODULE_NAME_FOR_LOG}] Module info for '{module_name}' not found")
+        await query.answer("❌ Информация о модуле не найдена", show_alert=True)
+        return
+    
+    # Получаем язык пользователя
+    user_locale = sdb_user.preferred_language_code or services_provider.config.core.i18n.default_locale
+    translator = _get_translator_for_handler(services_provider)
+    
+    def t(key: str, **kwargs) -> str:
+        return translator.gettext(key, user_locale, **kwargs)
+    
+    # Создаем базовое сообщение о модуле
+    icon = module_entry.icon or "🧩"
+    display_name = module_entry.display_name or module_name
+    description = module_entry.description or (module_info.manifest.description if module_info.manifest else "Модуль активен")
+    version = module_info.manifest.version if module_info.manifest else "N/A"
+    
+    # Получаем команды из манифеста
+    commands = []
+    if module_info.manifest and module_info.manifest.commands:
+        async with services_provider.db.get_session() as session:
+            is_super_admin = user_id in services_provider.config.core.super_admins
+            for cmd_manifest in module_info.manifest.commands:
+                # Проверяем права доступа к команде
+                if cmd_manifest.admin_only:
+                    if not is_super_admin:
+                        has_admin_permission = await services_provider.rbac.user_has_permission(
+                            session, user_id, "core.view_admin_panel"
+                        )
+                        if not has_admin_permission:
+                            continue
+                
+                # Проверяем разрешения модуля для команды (если есть)
+                # Используем первое разрешение модуля как базовое для доступа к команде
+                if module_info.manifest.declared_permissions:
+                    first_permission = module_info.manifest.declared_permissions[0]
+                    has_permission = await services_provider.rbac.user_has_permission(
+                        session, user_id, first_permission.name
+                    )
+                    if not has_permission:
+                        continue
+                
+                commands.append(cmd_manifest)
+    
+    # Формируем текст сообщения
+    if commands:
+        text = (
+            f"{icon} **{display_name}**\n\n"
+            f"{description}\n\n"
+            f"📊 **Информация:**\n"
+            f"• Версия: {version}\n"
+            f"• Статус: {'✅ Активен' if module_info.is_loaded_successfully else '❌ Не загружен'}\n\n"
+            f"🎯 **Доступные действия:**\n"
+            f"Выберите действие из списка ниже:"
+        )
+    else:
+        text = (
+            f"{icon} **{display_name}**\n\n"
+            f"{description}\n\n"
+            f"📊 **Информация:**\n"
+            f"• Версия: {version}\n"
+            f"• Статус: {'✅ Активен' if module_info.is_loaded_successfully else '❌ Не загружен'}\n\n"
+            f"💡 Модуль не имеет доступных команд или у вас нет прав для их использования."
+        )
+    
+    # Создаем клавиатуру с кнопками команд
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+    
+    builder = InlineKeyboardBuilder()
+    
+    if commands:
+        # Группируем команды по категориям
+        commands_by_category: Dict[str, List] = {}
+        commands_without_category = []
+        
+        for cmd in commands:
+            category = cmd.category or "Общие"
+            if category not in commands_by_category:
+                commands_by_category[category] = []
+            commands_by_category[category].append(cmd)
+        
+        # Добавляем команды по категориям
+        for category, category_commands in sorted(commands_by_category.items()):
+            for cmd in category_commands:
+                cmd_icon = cmd.icon or "⚙️"
+                cmd_text = f"{cmd_icon} {cmd.description or cmd.command}"
+                builder.row(
+                    InlineKeyboardButton(
+                        text=cmd_text,
+                        callback_data=ModuleAction(
+                            module_name=module_name,
+                            command=cmd.command,
+                            action="execute"
+                        ).pack()
+                    )
+                )
+    
+    # Кнопка "Назад к модулям"
+    builder.row(
+        InlineKeyboardButton(
+            text="🔙 Назад к модулям",
+            callback_data=CoreMenuNavigate(target_menu="modules_list").pack()
+        )
+    )
+    keyboard = builder.as_markup()
+    
+    # Отправляем или редактируем сообщение
+    try:
+        if query.message:
+            await query.message.edit_text(
+                text=text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+        else:
+            await bot.send_message(
+                chat_id=user_id,
+                text=text,
+                reply_markup=keyboard,
+                parse_mode="Markdown"
+            )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e).lower():
+            logger.warning(f"[{MODULE_NAME_FOR_LOG}] Ошибка редактирования сообщения для модуля '{module_name}': {e}")
+    except Exception as e:
+        logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка при обработке входа в модуль '{module_name}': {e}", exc_info=True)
+        await query.answer("❌ Ошибка при открытии модуля", show_alert=True)
+        return
+    
+    await query.answer()
+
+
+@core_ui_router.callback_query(ModuleAction.filter())
+async def cq_module_action(
+    query: types.CallbackQuery,
+    callback_data: ModuleAction,
+    bot: Bot,
+    services_provider: 'BotServicesProvider',
+    sdb_user: DBUser
+):
+    """
+    Универсальный обработчик для действий модулей (команд).
+    Выполняет команду модуля или показывает её интерфейс.
+    """
+    user_id = sdb_user.telegram_id
+    module_name = callback_data.module_name
+    command = callback_data.command
+    action = callback_data.action or "execute"
+    
+    logger.debug(f"[{MODULE_NAME_FOR_LOG}] User {user_id} requested action '{action}' for command '{command}' in module '{module_name}'")
+    
+    # Получаем информацию о модуле
+    module_info = services_provider.modules.get_module_info(module_name)
+    if not module_info or not module_info.manifest:
+        logger.warning(f"[{MODULE_NAME_FOR_LOG}] Module info or manifest for '{module_name}' not found")
+        await query.answer("❌ Модуль не найден", show_alert=True)
+        return
+    
+    # Находим команду в манифесте
+    cmd_manifest = None
+    for cmd in module_info.manifest.commands:
+        if cmd.command == command:
+            cmd_manifest = cmd
+            break
+    
+    if not cmd_manifest:
+        logger.warning(f"[{MODULE_NAME_FOR_LOG}] Command '{command}' not found in module '{module_name}' manifest")
+        await query.answer("❌ Команда не найдена", show_alert=True)
+        return
+    
+    # Проверяем права доступа
+    async with services_provider.db.get_session() as session:
+        # Проверка admin_only
+        if cmd_manifest.admin_only:
+            is_super_admin = user_id in services_provider.config.core.super_admins
+            if not is_super_admin:
+                has_admin_permission = await services_provider.rbac.user_has_permission(
+                    session, user_id, "core.view_admin_panel"
+                )
+                if not has_admin_permission:
+                    await query.answer("❌ У вас нет прав администратора для этой команды", show_alert=True)
+                    return
+        
+        # Проверка разрешений модуля
+        if module_info.manifest.declared_permissions:
+            first_permission = module_info.manifest.declared_permissions[0]
+            has_permission = await services_provider.rbac.user_has_permission(
+                session, user_id, first_permission.name
+            )
+            if not has_permission:
+                await query.answer("❌ У вас нет прав для использования этой команды", show_alert=True)
+                return
+    
+    # Выполняем действие
+    if action == "execute":
+        # Пытаемся найти обработчик команды в модуле
+        # Если модуль не имеет собственного обработчика, показываем базовое сообщение
+        cmd_icon = cmd_manifest.icon or "⚙️"
+        cmd_description = cmd_manifest.description or command
+        
+        text = (
+            f"{cmd_icon} **{cmd_description}**\n\n"
+            f"Команда `/{command}` выполнена.\n\n"
+            f"💡 Эта команда не имеет собственного обработчика в модуле.\n"
+            f"Используйте команду `/{command}` для полного функционала."
+        )
+        
+        from aiogram.types import InlineKeyboardButton
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        
+        builder = InlineKeyboardBuilder()
+        builder.row(
+            InlineKeyboardButton(
+                text="🔙 Назад к модулю",
+                callback_data=ModuleMenuEntry(module_name=module_name).pack()
+            )
+        )
+        keyboard = builder.as_markup()
+        
+        try:
+            if query.message:
+                await query.message.edit_text(
+                    text=text,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown"
+                )
+            else:
+                await bot.send_message(
+                    chat_id=user_id,
+                    text=text,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown"
+                )
+        except TelegramBadRequest as e:
+            if "message is not modified" not in str(e).lower():
+                logger.warning(f"[{MODULE_NAME_FOR_LOG}] Ошибка редактирования сообщения для команды '{command}': {e}")
+        except Exception as e:
+            logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка при выполнении команды '{command}': {e}", exc_info=True)
+            await query.answer("❌ Ошибка при выполнении команды", show_alert=True)
+            return
+    
+    await query.answer()

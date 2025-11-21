@@ -109,7 +109,7 @@ class I18nSettings(BaseModel):
     locales_dir: Path = Field(default=PROJECT_ROOT_DIR / "Systems" / "locales", description="Путь к директории с файлами переводов.")
     domain: str = Field(default="bot", description="Имя домена для переводов.")
     default_locale: str = Field(default="ru", description="Язык по умолчанию.")
-    available_locales: List[str] = Field(default_factory=lambda: ["ru", "en", "ua"], description="Список доступных языков.")
+    available_locales: List[str] = Field(default_factory=lambda: ["ru", "en", "uk"], description="Список доступных языков.")
 
 class CoreAppSettings(BaseModel):
     project_data_path: Path = Field(

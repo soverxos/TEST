@@ -4,7 +4,7 @@ import asyncio
 import sys
 import os
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Any, TYPE_CHECKING
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from datetime import datetime, timezone
 
 from loguru import logger as global_logger
@@ -33,8 +33,10 @@ from Systems.core.module_loader import ModuleLoader
 from Systems.core.ui.handlers_core_ui import core_ui_router
 from Systems.core.i18n.middleware import I18nMiddleware
 from Systems.core.i18n.translator import Translator
+from Systems.core.security.command_dedup import CommandDedupMiddleware
 from Systems.core.users.middleware import UserStatusMiddleware
 from Systems.core.logging_manager import LoggingManager
+from Systems.core.fsm.storage_factory import build_fsm_storage
 
 if TYPE_CHECKING:
     from aiogram.fsm.storage.redis import RedisStorage # <--- ИЗМЕНЕНИЕ: Импорт для type hinting
@@ -170,31 +172,14 @@ async def run_sdb_bot() -> int:
         me = await bot.get_me()
         global_logger.info(f"🤖 Экземпляр Telegram Bot успешно создан: @{me.username} (ID: {me.id})")
 
-        # <--- ИЗМЕНЕНИЕ: УСЛОВНЫЙ ИМПОРТ И СОЗДАНИЕ ХРАНИЛИЩА ---
-        storage: Union[MemoryStorage, "RedisStorage"]
-
-        if services.config.cache.type == "redis" and services.cache.is_available():
-            try:
-                # Импортируем RedisStorage только здесь
-                from aiogram.fsm.storage.redis import RedisStorage
-                
-                redis_client_instance = await services.cache.get_redis_client_instance()
-                if redis_client_instance:
-                    storage = RedisStorage(redis=redis_client_instance)
-                    global_logger.info("FSM Storage: используется RedisStorage.")
-                else:
-                    global_logger.warning("Redis сконфигурирован, но клиент Redis недоступен для FSM. Используется MemoryStorage.")
-                    storage = MemoryStorage()
-            except ImportError:
-                global_logger.critical("Выбран тип кэша/FSM 'redis', но библиотека 'redis' не установлена! Установите ее: pip install redis")
-                global_logger.warning("FSM Storage: Фоллбэк на MemoryStorage из-за отсутствия библиотеки redis.")
-                storage = MemoryStorage()
-        else:
+        try:
+            storage = await build_fsm_storage(services.cache, services.config.cache)
+        except AttributeError as e_cache_err:
+            global_logger.warning(
+                "CacheManager недоступен для FSM; используем MemoryStorage. "
+                f"Подробности: {e_cache_err}"
+            )
             storage = MemoryStorage()
-            if services.config.cache.type == "redis":
-                global_logger.warning("Redis был выбран для кэша, но CacheManager недоступен. Используется MemoryStorage для FSM.")
-            global_logger.info("FSM Storage: используется MemoryStorage.")
-        # <--- КОНЕЦ ИЗМЕНЕНИЯ ---
 
         dp = Dispatcher(storage=storage, services_provider=services)
         global_logger.info("🚦 Dispatcher и FSM Storage инициализированы.")
@@ -207,6 +192,10 @@ async def run_sdb_bot() -> int:
         )
         dp.update.outer_middleware(I18nMiddleware(translator))
         global_logger.info("I18nMiddleware зарегистрирован для всех Update.")
+
+        command_dedup_middleware = CommandDedupMiddleware()
+        dp.update.outer_middleware(command_dedup_middleware)
+        global_logger.info("CommandDedupMiddleware зарегистрирован для всех Update.")
 
         # Rate Limiting Middleware
         from Systems.core.security.rate_limiter import RateLimitMiddleware, RateLimiter
