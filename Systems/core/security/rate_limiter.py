@@ -35,10 +35,12 @@ class RateLimiter:
         self._requests: Dict[int, list] = defaultdict(list)
         # Настройки для разных типов действий
         self._limits: Dict[str, Tuple[int, int]] = {
-            "message": (10, 60),  # 10 сообщений в минуту
-            "callback": (20, 60),  # 20 callback'ов в минуту
-            "command": (5, 60),    # 5 команд в минуту
-            "inline_query": (30, 60),  # 30 inline запросов в минуту
+            # Базовый лимит берется из переданных по умолчанию значений
+            "message": (self.default_limit, self.default_window),
+            # Остальные типы действий масштабируются относительно базового лимита
+            "callback": (self.default_limit * 2, self.default_window),
+            "command": (max(1, self.default_limit // 2), self.default_window),
+            "inline_query": (self.default_limit * 3, self.default_window),
         }
         self._logger = logger.bind(service="RateLimiter")
     

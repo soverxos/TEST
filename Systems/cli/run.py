@@ -16,6 +16,57 @@ from .process import (PID_FILENAME,  # Импортируем из соседн�
 sdb_console = None  # Будет инициализирована в sdb.py
 
 
+def _load_runtime_dependencies():
+    """Загружает настройки и точку входа бота с дружелюбными подсказками."""
+    global sdb_console
+    if sdb_console is None:
+        from rich.console import Console
+
+        sdb_console = Console()
+
+    try:
+        os.environ.setdefault("SDB_SKIP_APP_SETTINGS_AUTOLOAD", "true")
+        import Systems.core.app_settings as app_settings
+
+        settings = app_settings.load_app_settings()
+        app_settings.settings = settings
+        from Systems.core.bot_entrypoint import run_sdb_bot
+    except ValueError as settings_error:
+        project_root = Path(__file__).resolve().parent.parent.parent
+        env_path = project_root / ".env"
+        env_example_path = project_root / "env.example"
+
+        help_lines = [
+            "BOT_TOKEN не найден. Заполните .env или core_settings.yaml перед запуском.",
+            f"Ожидался файл: [cyan]{env_path}[/cyan]",
+        ]
+
+        if env_example_path.exists():
+            help_lines.append(
+                f"Скопируйте пример: [cyan]cp {env_example_path} {env_path}[/cyan] и установите BOT_TOKEN."
+            )
+
+        help_lines.append(
+            "Или используйте визард настройки: [cyan]sdb config init[/cyan]"
+        )
+
+        sdb_console.print(
+            Panel(
+                "\n".join(help_lines),
+                title="Настройте окружение перед запуском",
+                border_style="red",
+                expand=False,
+            )
+        )
+
+        global_logger.error(
+            "Ошибка загрузки настроек перед запуском бота: {}", settings_error
+        )
+        raise typer.Exit(code=1)
+
+    return settings, run_sdb_bot
+
+
 def run_command(
     debug: bool = typer.Option(
         False,
@@ -40,8 +91,7 @@ def run_command(
     🚀 Запускает основной процесс Telegram бота SDB.
     """
     # Импортируем здесь, чтобы избежать циклических зависимостей и ускорить запуск CLI
-    from Systems.core.app_settings import settings
-    from Systems.core.bot_entrypoint import run_sdb_bot
+    settings, run_sdb_bot = _load_runtime_dependencies()
 
     global sdb_console
     if sdb_console is None:

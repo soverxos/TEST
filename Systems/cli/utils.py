@@ -1701,9 +1701,8 @@ def get_settings_only_for_cli():
 
     import yaml
 
-    from Systems.core.app_settings import PROJECT_ROOT_DIR
-
-    # Минимальные настройки
+    # Минимальные настройки (без загрузки app_settings, чтобы не требовать BOT_TOKEN)
+    PROJECT_ROOT_DIR = Path(__file__).resolve().parent.parent.parent
     Data_path = PROJECT_ROOT_DIR / "Data"
     config_file = Data_path / "Config" / "core_settings.yaml"
 
