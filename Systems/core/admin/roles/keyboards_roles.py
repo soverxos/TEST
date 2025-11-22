@@ -41,6 +41,10 @@ def get_roles_mgmt_texts(services_provider: 'BotServicesProvider', locale: Optio
         "role_action_delete_role": t("admin_role_action_delete_role"),
         "back_to_roles_list": t("admin_back_to_roles_list"),
         "edit_permissions_for_role": t("admin_edit_permissions_for_role"),
+        "role_permissions_instruction": t("admin_role_permissions_heading"),
+        "role_no_permissions": t("admin_role_no_permissions"),
+        "role_description_label": t("admin_role_description_label"),
+        "role_permissions_label": t("admin_role_permissions_label"),
         "role_action_create_role": t("admin_role_action_create_role"),
     }
 
@@ -55,6 +59,11 @@ ROLES_MGMT_TEXTS = {
     "role_action_delete_role": "🗑️ Удалить роль",    
     "back_to_roles_list": "⬅️ К списку ролей",
     "edit_permissions_for_role": "Разрешения для роли: {role_name}", 
+    "role_permissions_instruction": "Отметьте разрешения для назначения/снятия:",
+    "role_no_permissions": "  (нет назначенных разрешений)",
+    "role_description_label": "Описание:",
+    "role_permissions_label": "Разрешения этой роли:",
+    "back_to_role_details": "⬅️ К деталям роли",
     "role_action_create_role": "➕ Создать роль",
 }
 

@@ -4,14 +4,40 @@ Serves React frontend and provides API endpoints.
 """
 
 import os
+import json
 import hashlib
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+from Systems.core.database.core_models import User as DBUser
+
+
+class BlockUserRequest(BaseModel):
+    block: bool
+
+
+class ModuleToggleRequest(BaseModel):
+    enable: bool
+
+
+def _persist_enabled_modules(enabled_modules: List[str], config_path: Path) -> List[str]:
+    unique_module_names = sorted({name.strip() for name in enabled_modules if name and name.strip()})
+    data_to_save = {
+        "active_modules": unique_module_names,
+        "disabled_modules": [],
+    }
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(data_to_save, f, indent=2, ensure_ascii=False)
+    return unique_module_names
 
 
 def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
@@ -52,6 +78,11 @@ def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
     # Mount static files (Vite build output)
     if dist_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="assets")
+        
+        # Mount locales directory for translations (from dist, copied from public by Vite)
+        dist_locales_dir = dist_dir / "locales"
+        if dist_locales_dir.exists():
+            app.mount("/locales", StaticFiles(directory=str(dist_locales_dir)), name="locales")
         
         # Serve index.html for root
         @app.get("/", response_class=HTMLResponse)
@@ -118,8 +149,21 @@ def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
     @app.get("/api/modules")
     async def get_modules():
         """Get modules list."""
-        # This would normally fetch from sdb_services
-        # For now, return mock data
+        if sdb_services:
+            modules_info = sdb_services.modules.get_all_modules_info()
+            modules_payload = []
+            for info in modules_info:
+                modules_payload.append({
+                    "name": info.name,
+                    "status": "active" if info.is_enabled else "inactive",
+                    "description": info.manifest.description if info.manifest and info.manifest.description else "",
+                    "display_name": info.manifest.display_name if info.manifest and info.manifest.display_name else info.name,
+                    "is_system_module": info.is_system_module,
+                    "version": info.manifest.version if info.manifest and info.manifest.version else None,
+                })
+            return modules_payload
+
+        # Fallback mock data
         return [
             {
                 "name": "sys_status",
@@ -141,8 +185,25 @@ def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
     @app.get("/api/users")
     async def get_users():
         """Get users list."""
-        # This would normally fetch from sdb_services
-        # For now, return mock data
+        if sdb_services:
+            async with sdb_services.db.get_session() as session:
+                stmt = select(DBUser).options(selectinload(DBUser.roles)).order_by(DBUser.id)
+                result = await session.execute(stmt)
+                db_users = result.scalars().all()
+                payload = []
+                for user in db_users:
+                    primary_role = user.roles[0].name if user.roles else "user"
+                    avatar = user.username[:1].upper() if user.username else "U"
+                    payload.append({
+                        "id": user.id,
+                        "username": user.username or "",
+                        "role": primary_role,
+                        "avatar": avatar,
+                        "is_blocked": user.is_bot_blocked
+                    })
+                return payload
+
+        # Fallback mock data
         return [
             {
                 "id": 1,
@@ -163,6 +224,71 @@ def create_app(sdb_services=None, debug: bool = False) -> FastAPI:
                 "avatar": "U"
             }
         ]
+
+    @app.post("/api/users/{user_db_id}/block")
+    async def block_user(user_db_id: int, payload: BlockUserRequest):
+        """Block or unblock a user."""
+        if not sdb_services:
+            raise HTTPException(status_code=503, detail="SwiftDevBot services are not initialized.")
+
+        async with sdb_services.db.get_session() as session:
+            user = await session.get(DBUser, user_db_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found.")
+
+            if user.telegram_id in sdb_services.config.core.super_admins:
+                raise HTTPException(status_code=403, detail="Cannot change block status of super administrators.")
+
+            changed = await sdb_services.user_service.set_user_bot_blocked_status(user, payload.block, session)
+
+            if changed:
+                await session.commit()
+            else:
+                await session.rollback()
+
+            return {"success": changed, "is_blocked": user.is_bot_blocked}
+
+    @app.post("/api/modules/{module_name}/toggle")
+    async def toggle_module(module_name: str, payload: ModuleToggleRequest):
+        """Enable or disable a plugin from the dashboard."""
+        if not sdb_services:
+            raise HTTPException(status_code=503, detail="SwiftDevBot services are not initialized.")
+
+        module_info = sdb_services.modules.get_module_info(module_name)
+        if not module_info:
+            raise HTTPException(status_code=404, detail="Module not found.")
+
+        if module_info.is_system_module:
+            raise HTTPException(status_code=400, detail="System modules cannot be toggled via dashboard.")
+
+        desired_status = payload.enable
+        current_enabled = list(sdb_services.modules.enabled_plugin_names)
+
+        if desired_status and module_name not in current_enabled:
+            current_enabled.append(module_name)
+        elif not desired_status and module_name in current_enabled:
+            current_enabled.remove(module_name)
+
+        try:
+            saved_list = _persist_enabled_modules(current_enabled, sdb_services.config.core.enabled_modules_config_path)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to persist enabled modules: {exc}")
+
+        sdb_services.modules.enabled_plugin_names = saved_list
+        if module_info:
+            module_info.is_enabled = desired_status
+
+        outcome = "active" if desired_status else "inactive"
+        return {
+            "success": True,
+            "module": {
+                "name": module_name,
+                "status": outcome,
+                "description": module_info.manifest.description if module_info.manifest and module_info.manifest.description else "",
+                "display_name": module_info.manifest.display_name if module_info.manifest and module_info.manifest.display_name else module_name,
+            },
+            "enabled_modules": saved_list,
+        }
     
     @app.get("/api/logs")
     async def get_logs(limit: int = 100, level: Optional[str] = None):

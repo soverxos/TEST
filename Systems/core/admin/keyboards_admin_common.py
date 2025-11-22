@@ -95,6 +95,14 @@ def get_admin_texts(services_provider: 'BotServicesProvider', locale: Optional[s
         "role_is_standard_cant_delete": t("admin_role_is_standard_cant_delete"),
         "role_delete_failed": t("admin_role_delete_failed"),
         "role_deleted_successfully": t("admin_role_deleted_successfully"),
+        "admin_role_permissions_heading": t("admin_role_permissions_heading"),
+        "admin_cache_section": t("admin_cache_section"),
+        "admin_role_no_permissions": t("admin_role_no_permissions"),
+        "admin_role_description_label": t("admin_role_description_label"),
+        "admin_role_permissions_label": t("admin_role_permissions_label"),
+        "admin_back_to_role_details": t("admin_back_to_role_details"),
+        "admin_error_saving_role": t("admin_error_saving_role"),
+        "admin_no_registered_users_notice": t("admin_no_registered_users_notice"),
     }
 
 # Старый словарь для обратной совместимости (deprecated, будет удален)
@@ -130,6 +138,14 @@ ADMIN_COMMON_TEXTS = {
     "back_to_module_list_for_perms": "⬅️ К списку модулей (для прав)",
     "no_modules_with_perms": "Нет модулей с объявлениями прав",
     "no_permissions_in_group": "В этой группе нет разрешений",
+    "admin_role_permissions_heading": "Отметьте разрешения для назначения/снятия:",
+    "admin_cache_section": "💾 Кэш",
+    "admin_role_no_permissions": "  (нет назначенных разрешений)",
+    "admin_role_description_label": "Описание:",
+    "admin_role_permissions_label": "Разрешения этой роли:",
+    "admin_back_to_role_details": "⬅️ К деталям роли",
+    "admin_error_saving_role": "Ошибка сохранения роли.",
+    "admin_no_registered_users_notice": "👥 Пользователи\n\nВ базе данных нет зарегистрированных пользователей.",
 
     # Тексты для FSM (добавлены)
     "fsm_enter_role_name": "Введите имя новой роли:",

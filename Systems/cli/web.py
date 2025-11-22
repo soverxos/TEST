@@ -22,29 +22,43 @@ web_app = typer.Typer(
 
 @web_app.command(name="start", help="Запустить веб-панель.")
 def web_start_cmd(
-    host: str = typer.Option(None, "--host", "-h", help="Хост для веб-панели"),
-    port: int = typer.Option(None, "--port", "-p", help="Порт для веб-панели"),
-    reload: bool = typer.Option(False, "--reload", help="Автоперезагрузка при изменениях"),
-    workers: int = typer.Option(1, "--workers", "-w", help="Количество воркеров"),
+    host: str = typer.Option(None, "--host", "-h", help="Хост для веб-панели (переопределяет SDB_WEB_HOST)"),
+    port: int = typer.Option(None, "--port", "-p", help="Порт для веб-панели (переопределяет SDB_WEB_PORT)"),
+    reload: bool = typer.Option(None, "--reload/--no-reload", help="Автоперезагрузка при изменениях (переопределяет SDB_WEB_RELOAD)"),
+    workers: int = typer.Option(None, "--workers", "-w", help="Количество воркеров (переопределяет SDB_WEB_WORKERS)"),
 ):
     """
     Запустить веб-панель SwiftDevBot.
     
-    Args:
-        host: Хост для веб-панели (по умолчанию: из SDB_WEB_HOST или 127.0.0.1)
-        port: Порт для веб-панели (по умолчанию: из SDB_WEB_PORT или 8000)
-        reload: Автоперезагрузка при изменениях (для разработки)
-        workers: Количество воркеров (для production)
+    Все параметры можно настроить в .env файле:
+    - SDB_WEB_HOST - хост (по умолчанию: 127.0.0.1)
+    - SDB_WEB_PORT - порт (по умолчанию: 8000)
+    - SDB_WEB_RELOAD - автоперезагрузка true/false (по умолчанию: false)
+    - SDB_WEB_WORKERS - количество воркеров (по умолчанию: 1)
+    
+    Параметры командной строки имеют приоритет над переменными окружения.
     """
     # Загружаем переменные окружения, если параметры не указаны
     import os
     from dotenv import load_dotenv
     load_dotenv('.env')
     
+    # Хост: параметр > переменная окружения > значение по умолчанию
     if host is None:
         host = os.environ.get("SDB_WEB_HOST", "127.0.0.1")
+    
+    # Порт: параметр > переменная окружения > значение по умолчанию
     if port is None:
         port = int(os.environ.get("SDB_WEB_PORT", "8000"))
+    
+    # Reload: параметр > переменная окружения > значение по умолчанию
+    if reload is None:
+        reload_str = os.environ.get("SDB_WEB_RELOAD", "false").lower()
+        reload = reload_str in ("true", "1", "yes", "on")
+    
+    # Workers: параметр > переменная окружения > значение по умолчанию
+    if workers is None:
+        workers = int(os.environ.get("SDB_WEB_WORKERS", "1"))
     
     try:
         asyncio.run(_web_start_async(host, port, reload, workers))
@@ -138,22 +152,33 @@ async def _web_start_async(host: str, port: int, reload: bool, workers: int):
 @web_app.command(name="status", help="Показать статус веб-панели.")
 def web_status_cmd():
     """Показать статус веб-панели."""
-    console.print(Panel("[bold cyan]СТАТУС ВЕБ-ПАНЕЛИ[/]", expand=False, border_style="cyan"))
-    
-    # Проверяем, запущен ли сервер
+    import os
+    from dotenv import load_dotenv
     import socket
     
+    load_dotenv('.env')
+    
+    # Получаем настройки из переменных окружения
+    host = os.environ.get("SDB_WEB_HOST", "127.0.0.1")
+    port = int(os.environ.get("SDB_WEB_PORT", "8000"))
+    
+    console.print(Panel("[bold cyan]СТАТУС ВЕБ-ПАНЕЛИ[/]", expand=False, border_style="cyan"))
+    console.print(f"[dim]Проверка на {host}:{port}[/]")
+    
+    # Проверяем, запущен ли сервер
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
-        result = sock.connect_ex(("127.0.0.1", 8000))
+        result = sock.connect_ex((host if host != "0.0.0.0" else "127.0.0.1", port))
         sock.close()
         
         if result == 0:
             console.print("[green]✅ Веб-панель запущена[/]")
-            console.print("[cyan]URL:[/] http://127.0.0.1:8000")
+            display_host = host if host != "0.0.0.0" else "localhost"
+            console.print(f"[cyan]URL:[/] http://{display_host}:{port}")
         else:
             console.print("[yellow]⚠️ Веб-панель не запущена[/]")
+            console.print(f"[dim]Ожидаемый адрес: {host}:{port}[/]")
     except Exception as e:
         console.print(f"[yellow]⚠️ Не удалось проверить статус: {e}[/]")
 

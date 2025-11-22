@@ -38,6 +38,7 @@ def get_users_mgmt_texts(services_provider: 'BotServicesProvider', locale: Optio
         "user_action_toggle_blocked": t("admin_user_action_toggle_blocked"),
         "edit_roles_for_user": t("admin_edit_roles_for_user"),
         "back_to_user_details": t("admin_back_to_user_details"),
+        "back_to_user_list": t("admin_back_to_user_list"),
         "user_is_owner_text": t("admin_user_is_owner_text"),
         "user_action_direct_perms": t("admin_user_action_direct_perms"),
         "edit_direct_perms_for_user": t("admin_edit_direct_perms_for_user"),
@@ -64,6 +65,7 @@ def get_users_mgmt_texts(services_provider: 'BotServicesProvider', locale: Optio
         "user_roles_status": t("admin_user_roles_status"),
         "user_registration": t("admin_user_registration"),
         "user_last_activity": t("admin_user_last_activity"),
+        "no_users_registered_notice": t("admin_no_registered_users_notice"),
     }
 
 # Старый словарь для обратной совместимости (deprecated)
@@ -84,6 +86,7 @@ USERS_MGMT_TEXTS = {
     "back_to_direct_perm_categories": "⬅️ К категориям разрешений (для юзера)",
     "back_to_direct_perm_core_groups": "⬅️ К группам Ядра (для юзера)",
     "back_to_direct_perm_module_list": "⬅️ К модулям (для юзера)",
+    "back_to_user_list": "⬅️ К списку пользователей",
 }
 
 
@@ -217,7 +220,7 @@ async def get_admin_user_details_keyboard_local(
         builder.adjust(1)
 
     builder.row(InlineKeyboardButton(
-        text="⬅️ К списку пользователей",  # TODO: добавить в переводы
+        text=users_texts["back_to_user_list"],
         callback_data=AdminUsersPanelNavigate(action="list", page=1).pack() 
     ))
     builder.row(get_back_to_admin_main_menu_button(services, locale))

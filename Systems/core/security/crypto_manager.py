@@ -9,11 +9,14 @@ import json
 import hashlib
 import secrets
 import time
-from typing import Dict, List, Optional, Tuple
+import zipfile
+import yaml
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 from dataclasses import dataclass
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from loguru import logger
@@ -40,6 +43,12 @@ class DigitalSignature:
 
 class CryptoManager:
     """Менеджер криптографии для цифровых подписей"""
+
+    _AES_SALT_SIZE = 16
+    _AES_NONCE_SIZE = 12
+    _AES_TAG_SIZE = 16
+    _PBKDF2_ITERATIONS = 100_000
+    _LEGACY_SALT_SIZE = 16
     
     def __init__(self, config):
         self.config = config
@@ -80,6 +89,17 @@ class CryptoManager:
             master_password = b"temporary_password_change_me"
         
         return master_password
+
+    def _derive_encryption_key(self, salt: bytes) -> bytes:
+        """Генерирует ключ AES из мастер-пароля и соли"""
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=self._PBKDF2_ITERATIONS,
+            backend=default_backend()
+        )
+        return kdf.derive(self.master_password)
     
     def generate_key_pair(self, key_id: str, key_size: int = 2048) -> KeyPair:
         """Генерирует новую пару ключей"""
@@ -165,24 +185,20 @@ class CryptoManager:
                 encryption_algorithm=serialization.NoEncryption()
             )
             
-            # Создаем соль для шифрования
-            salt = secrets.token_bytes(16)
-            
-            # Создаем ключ для шифрования из мастер-пароля
-            kdf = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                iterations=100000,
+            salt = secrets.token_bytes(self._AES_SALT_SIZE)
+            encryption_key = self._derive_encryption_key(salt)
+            nonce = secrets.token_bytes(self._AES_NONCE_SIZE)
+
+            cipher = Cipher(
+                algorithms.AES(encryption_key),
+                modes.GCM(nonce),
                 backend=default_backend()
             )
-            encryption_key = kdf.derive(self.master_password)
-            
-            # Шифруем данные (упрощенное шифрование для демонстрации)
-            # В реальной реализации используйте AES-GCM
-            encrypted_data = private_key_pem + salt  # Упрощение!
-            
-            return encrypted_data
+            encryptor = cipher.encryptor()
+            ciphertext = encryptor.update(private_key_pem) + encryptor.finalize()
+            tag = encryptor.tag
+
+            return salt + nonce + tag + ciphertext
             
         except Exception as e:
             logger.error(f"[Security] Ошибка шифрования приватного ключа: {e}")
@@ -247,21 +263,52 @@ class CryptoManager:
     def _decrypt_private_key(self, encrypted_data: bytes) -> rsa.RSAPrivateKey:
         """Расшифровывает приватный ключ"""
         try:
-            # В реальной реализации здесь будет расшифровка
-            # Пока просто возвращаем данные как есть (упрощение!)
-            private_key_pem = encrypted_data[:-16]  # Убираем соль
-            
-            private_key = serialization.load_pem_private_key(
-                private_key_pem,
-                password=None,
-                backend=default_backend()
-            )
-            
-            return private_key
-            
-        except Exception as e:
-            logger.error(f"[Security] Ошибка расшифровки приватного ключа: {e}")
-            raise
+            return self._decrypt_private_key_gcm(encrypted_data)
+        except Exception as e_new:
+            logger.warning(f"[Security] Не удалось расшифровать ключ AES-GCM ({e_new}); пробуем старый формат.")
+            return self._decrypt_private_key_legacy(encrypted_data)
+
+    def _decrypt_private_key_gcm(self, encrypted_data: bytes) -> rsa.RSAPrivateKey:
+        """Расшифровывает ключ, зашифрованный AES-GCM"""
+        header_size = self._AES_SALT_SIZE + self._AES_NONCE_SIZE + self._AES_TAG_SIZE
+        if len(encrypted_data) <= header_size:
+            raise ValueError("Недостаточно байт для формата AES-GCM.")
+
+        salt = encrypted_data[:self._AES_SALT_SIZE]
+        nonce_start = self._AES_SALT_SIZE
+        nonce_end = nonce_start + self._AES_NONCE_SIZE
+        tag_end = nonce_end + self._AES_TAG_SIZE
+
+        nonce = encrypted_data[nonce_start:nonce_end]
+        tag = encrypted_data[nonce_end:tag_end]
+        ciphertext = encrypted_data[tag_end:]
+
+        encryption_key = self._derive_encryption_key(salt)
+        cipher = Cipher(
+            algorithms.AES(encryption_key),
+            modes.GCM(nonce, tag),
+            backend=default_backend()
+        )
+        decryptor = cipher.decryptor()
+        private_key_pem = decryptor.update(ciphertext) + decryptor.finalize()
+
+        return serialization.load_pem_private_key(
+            private_key_pem,
+            password=None,
+            backend=default_backend()
+        )
+
+    def _decrypt_private_key_legacy(self, encrypted_data: bytes) -> rsa.RSAPrivateKey:
+        """Расшифровывает приватный ключ старого формата"""
+        if len(encrypted_data) <= self._LEGACY_SALT_SIZE:
+            raise ValueError("Недостаточно байт для старого формата ключа.")
+
+        private_key_pem = encrypted_data[:-self._LEGACY_SALT_SIZE]
+        return serialization.load_pem_private_key(
+            private_key_pem,
+            password=None,
+            backend=default_backend()
+        )
     
     def sign_data(self, data: bytes, key_id: str) -> bytes:
         """Подписывает данные"""
@@ -312,6 +359,53 @@ class CryptoManager:
         except Exception as e:
             logger.warning(f"[Security] Ошибка проверки подписи ключом {key_id}: {e}")
             return False
+
+    def _load_manifest_data(self, module_path: Path) -> Dict[str, Any]:
+        """Пытается загрузить manifest.yaml из модуля"""
+        manifest_candidates = []
+
+        if module_path.is_dir():
+            manifest_candidates.extend([
+                module_path / "manifest.yaml",
+                module_path / "manifest.yml"
+            ])
+        elif module_path.is_file():
+            lowered_name = module_path.name.lower()
+            if lowered_name in {"manifest.yaml", "manifest.yml"}:
+                manifest_candidates.append(module_path)
+            else:
+                manifest_candidates.extend([
+                    module_path.parent / "manifest.yaml",
+                    module_path.parent / "manifest.yml"
+                ])
+
+        for candidate in manifest_candidates:
+            if candidate.exists():
+                try:
+                    return self._parse_manifest_content(candidate.read_text(encoding="utf-8"))
+                except Exception as e:
+                    logger.warning(f"[Security] Не удалось прочитать {candidate}: {e}")
+                    return {}
+
+        if module_path.is_file() and module_path.suffix.lower() == ".zip":
+            try:
+                with zipfile.ZipFile(module_path, "r") as archive:
+                    for entry in archive.namelist():
+                        if Path(entry).name.lower() in {"manifest.yaml", "manifest.yml"}:
+                            raw = archive.read(entry).decode("utf-8")
+                            return self._parse_manifest_content(raw)
+            except Exception as e:
+                logger.warning(f"[Security] Ошибка при чтении manifest.yaml из ZIP {module_path}: {e}")
+
+        return {}
+
+    def _parse_manifest_content(self, content: str) -> Dict[str, Any]:
+        try:
+            loaded = yaml.safe_load(content)
+            return loaded if isinstance(loaded, dict) else {}
+        except Exception as e:
+            logger.warning(f"[Security] Не удалось распарсить manifest.yaml: {e}")
+            return {}
     
     def sign_module(self, module_path: Path, key_id: str) -> DigitalSignature:
         """Подписывает модуль"""
@@ -323,10 +417,20 @@ class CryptoManager:
             # Вычисляем хэш файла
             file_hash = hashlib.sha256(module_data).hexdigest()
             
+            manifest_info = self._load_manifest_data(module_path)
+            module_name_from_manifest = manifest_info.get("name", module_path.stem)
+            module_version = manifest_info.get("version")
+            if not module_version:
+                module_version = "0.0.0"
+                logger.warning(
+                    f"[Security] Не удалось получить версию модуля из manifest.yaml ({module_name_from_manifest}); "
+                    "будет использована 0.0.0"
+                )
+            
             # Создаем данные для подписи
             signature_data = {
-                "module_name": module_path.stem,
-                "version": "1.0.0",  # TODO: извлекать из манифеста
+                "module_name": module_name_from_manifest,
+                "version": module_version,
                 "file_hash": file_hash,
                 "timestamp": time.time(),
                 "algorithm": "RSA-SHA256"
@@ -340,7 +444,7 @@ class CryptoManager:
             
             # Создаем объект подписи
             digital_signature = DigitalSignature(
-                module_name=module_path.stem,
+                module_name=module_name_from_manifest,
                 version=signature_data["version"],
                 file_hash=file_hash,
                 signature=signature,
@@ -348,7 +452,7 @@ class CryptoManager:
                 timestamp=signature_data["timestamp"]
             )
             
-            logger.info(f"[Security] Модуль {module_path.stem} подписан ключом {key_id}")
+            logger.info(f"[Security] Модуль {module_name_from_manifest} подписан ключом {key_id}")
             return digital_signature
             
         except Exception as e:

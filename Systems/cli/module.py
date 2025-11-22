@@ -967,6 +967,128 @@ def disable_module_cmd(
         raise typer.Exit(code=1)
 
 
+@module_app.command(
+    name="reload",
+    help="Перезагрузить модуль (выполняет полный рестарт процесса бота для применения изменений).",
+)
+def reload_module_cmd(
+    module_name: str = typer.Argument(..., help="Имя модуля для перезагрузки."),
+    background: bool = typer.Option(
+        False,
+        "--background",
+        "-b",
+        help="Запустить бота в фоновом режиме после перезапуска.",
+    ),
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        "-d",
+        help="Запустить бота в режиме отладки после перезапуска.",
+    ),
+):
+    """
+    Перезагружает модуль путем полного рестарта процесса бота.
+    
+    ВАЖНО: Эта команда выполняет полный рестарт процесса бота (sdb restart),
+    а не горячую перезагрузку модуля через importlib.reload. Это сделано
+    намеренно, так как горячая перезагрузка модулей в Python при работающем
+    asyncio event loop часто приводит к утечкам памяти и странным багам.
+    
+    Для применения изменений в модуле используйте эту команду или
+    `sdb restart` напрямую.
+    """
+    import subprocess
+    import os
+    from pathlib import Path
+
+    loader = _get_module_loader_sync()
+    if not loader:
+        raise typer.Exit(code=1)
+
+    # Проверяем, что модуль существует
+    module_info = loader.get_module_info(module_name)
+    if not module_info:
+        console.print(
+            f"[bold red]Ошибка: Модуль '{module_name}' не найден среди доступных.[/]"
+        )
+        console.print(
+            f"Доступные модули: {[m.name for m in loader.available_modules.values()]}"
+        )
+        raise typer.Exit(code=1)
+
+    # Для плагинов проверяем, что они активны
+    if not module_info.is_system_module:
+        if module_name not in loader.enabled_plugin_names:
+            console.print(
+                f"[yellow]Предупреждение: Плагин '{module_name}' не активен.[/]"
+            )
+            console.print(
+                f"Активируйте его через `sdb module enable {module_name}` перед перезагрузкой."
+            )
+            if not typer.confirm("Продолжить перезапуск бота?", default=False):
+                raise typer.Exit(code=0)
+
+    console.print(
+        Panel(
+            f"[bold blue]ПЕРЕЗАГРУЗКА МОДУЛЯ: {module_name}[/]\n"
+            f"[dim]Выполняется полный рестарт процесса бота...[/]",
+            expand=False,
+            border_style="blue",
+        )
+    )
+
+    # Определяем путь к исполняемому файлу sdb
+    project_root = Path(__file__).resolve().parent.parent.parent
+    sdb_path = project_root / "sdb"
+    sdb_py_path = project_root / "sdb.py"
+
+    sdb_executable_str: Optional[str] = None
+    if sdb_path.exists() and os.access(sdb_path, os.X_OK):
+        sdb_executable_str = str(sdb_path)
+    elif sdb_py_path.exists():
+        sdb_executable_str = str(sdb_py_path)
+
+    if not sdb_executable_str:
+        console.print(
+            f"[bold red]Ошибка: Не удалось определить исполняемый файл SDB CLI.[/]"
+        )
+        raise typer.Exit(code=1)
+
+    # Вызываем команду restart
+    try:
+        restart_args = [sdb_executable_str, "restart"]
+        if background:
+            restart_args.append("--background")
+        if debug:
+            restart_args.append("--debug")
+
+        console.print(
+            f"[dim]Выполняется: {' '.join(restart_args)}[/dim]"
+        )
+
+        # Вызываем restart через subprocess
+        result = subprocess.run(restart_args)
+
+        if result.returncode == 0:
+            console.print(
+                f"[bold green]✅ Модуль '{module_name}' перезагружен (бот перезапущен)![/]"
+            )
+        else:
+            console.print(
+                f"[bold red]Ошибка при перезапуске бота (код: {result.returncode}).[/]"
+            )
+            raise typer.Exit(code=result.returncode)
+
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Перезапуск прерван пользователем.[/]")
+        raise typer.Exit(code=130)
+    except Exception as e:
+        console.print(f"[bold red]Ошибка при перезапуске бота: {e}[/]")
+        import traceback
+        console.print(f"[dim]{traceback.format_exc()}[/]")
+        raise typer.Exit(code=1)
+
+
 async def _clean_tables_module_async_internal(
     module_name: str, loader: Any, called_from_uninstall: bool = False
 ) -> bool:
@@ -1824,6 +1946,91 @@ async def _update_single_module(module_name: str, force: bool):
     console.print("[dim]В будущем здесь будет загрузка обновлений из репозитория.[/]")
 
     return True
+
+
+@module_app.command(
+    name="visibility",
+    help="Управление видимостью модуля для обычных пользователей."
+)
+def module_visibility_cmd(
+    module_name: str = typer.Argument(..., help="Имя модуля"),
+    public: Optional[bool] = typer.Option(
+        None, "--public/--private", help="Сделать модуль видимым всем (--public) или только с разрешениями (--private)"
+    ),
+    show: bool = typer.Option(
+        False, "--show", help="Показать текущую настройку видимости"
+    ),
+):
+    """
+    Управляет видимостью модуля для обычных пользователей.
+    
+    Если установлено --public, модуль будет виден всем пользователям (assign_default_access_to_user_role: true).
+    Если установлено --private, модуль будет виден только пользователям с соответствующими разрешениями.
+    """
+    loader = _get_module_loader_sync()
+    if not loader:
+        raise typer.Exit(code=1)
+    
+    module_info = loader.get_module_info(module_name)
+    if not module_info:
+        console.print(f"[bold red]Ошибка: Модуль '{module_name}' не найден.[/]")
+        raise typer.Exit(code=1)
+    
+    manifest_path = module_info.path / "manifest.yaml"
+    if not manifest_path.exists():
+        console.print(f"[bold red]Ошибка: Файл manifest.yaml не найден для модуля '{module_name}'.[/]")
+        console.print(f"  Путь: {manifest_path}")
+        raise typer.Exit(code=1)
+    
+    try:
+        import yaml
+        
+        # Читаем манифест
+        manifest_data = yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
+        
+        # Инициализируем metadata, если его нет
+        if "metadata" not in manifest_data:
+            manifest_data["metadata"] = {}
+        
+        # Поддерживаем оба варианта: длинное имя и короткий алиас
+        current_value = manifest_data["metadata"].get("public_access") or manifest_data["metadata"].get("assign_default_access_to_user_role", False)
+        
+        # Если только показываем
+        if show or public is None:
+            status = "✅ Видим всем" if current_value else "🔒 Только с разрешениями"
+            console.print(f"\n[bold cyan]Модуль:[/] {module_name}")
+            console.print(f"[bold cyan]Текущая видимость:[/] {status}")
+            console.print(f"[bold cyan]public_access:[/] {current_value}")
+            console.print(f"[dim](или assign_default_access_to_user_role в старых манифестах)[/]")
+            console.print(f"\n[dim]Используй --public или --private для изменения[/]")
+            return
+        
+        # Устанавливаем новое значение (используем короткий алиас для удобства)
+        # Удаляем старое длинное имя, если оно было
+        if "assign_default_access_to_user_role" in manifest_data["metadata"]:
+            del manifest_data["metadata"]["assign_default_access_to_user_role"]
+        manifest_data["metadata"]["public_access"] = public
+        
+        # Сохраняем обратно
+        manifest_path.write_text(
+            yaml.safe_dump(manifest_data, allow_unicode=True, sort_keys=False, default_flow_style=False),
+            encoding="utf-8"
+        )
+        
+        if public:
+            console.print(f"[green]✓[/] Модуль '{module_name}' теперь [bold green]видим всем пользователям[/]")
+            console.print("[yellow]⚠[/] Перезапусти бота, чтобы изменения вступили в силу.")
+        else:
+            console.print(f"[green]✓[/] Модуль '{module_name}' теперь [bold yellow]требует разрешения[/] для доступа")
+            console.print("[yellow]⚠[/] Перезапусти бота, чтобы изменения вступили в силу.")
+            
+    except ImportError:
+        console.print("[bold red]Ошибка: Не установлен модуль 'yaml'. Установите: pip install pyyaml[/]")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        console.print(f"[bold red]Ошибка при изменении видимости модуля: {e}[/]")
+        console.print_exception(show_locals=False)
+        raise typer.Exit(code=1)
 
 
 @module_app.command(name="sync-deps", help="Собрать Python-зависимости модулей.")

@@ -47,10 +47,11 @@ PyJWT>=2.8.0
 python-multipart
 websockets
 
-pytest 
-pylint 
-sphinx 
-coverage 
-black 
-isort 
+pytest
+pytest-asyncio
+pylint
+sphinx
+coverage
+black
+isort
 mypy

@@ -87,7 +87,7 @@ python3 sdb.py run
 # Управление модулем
 python3 sdb.py module enable my_new_module
 python3 sdb.py module disable my_new_module
-python3 sdb.py module reload my_new_module
+python3 sdb.py module reload my_new_module  # Полный рестарт бота для применения изменений
 
 # Настройки модуля
 python3 sdb.py config set-module my_new_module enabled true

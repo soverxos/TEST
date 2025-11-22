@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GlassCard } from './ui/GlassCard';
+import { useI18n } from '../contexts/I18nContext';
 import {
   Home,
   Box,
@@ -13,31 +13,30 @@ import {
   Activity,
   Sliders,
   Shield,
-  ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 
 type MenuItem = {
   id: string;
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
   adminOnly?: boolean;
 };
 
 const userMenuItems: MenuItem[] = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'modules', label: 'Modules', icon: Box },
-  { id: 'users', label: 'Users', icon: Users },
-  { id: 'statistics', label: 'Statistics', icon: BarChart3 },
-  { id: 'logs', label: 'Logs', icon: FileText },
-  { id: 'settings', label: 'Settings', icon: Settings },
-  { id: 'docs', label: 'Documentation', icon: BookOpen },
+  { id: 'home', labelKey: 'sidebar.home', icon: Home },
+  { id: 'modules', labelKey: 'sidebar.modules', icon: Box },
+  { id: 'users', labelKey: 'sidebar.users', icon: Users },
+  { id: 'statistics', labelKey: 'sidebar.statistics', icon: BarChart3 },
+  { id: 'logs', labelKey: 'sidebar.logs', icon: FileText },
+  { id: 'settings', labelKey: 'sidebar.settings', icon: Settings },
+  { id: 'docs', labelKey: 'sidebar.documentation', icon: BookOpen },
 ];
 
 const adminMenuItems: MenuItem[] = [
-  { id: 'config', label: 'Core Config', icon: Sliders },
-  { id: 'services', label: 'Services', icon: Server },
-  { id: 'monitoring', label: 'Monitoring', icon: Activity },
+  { id: 'config', labelKey: 'sidebar.coreConfig', icon: Sliders },
+  { id: 'services', labelKey: 'sidebar.services', icon: Server },
+  { id: 'monitoring', labelKey: 'sidebar.monitoring', icon: Activity },
 ];
 
 type SidebarProps = {
@@ -48,11 +47,9 @@ type SidebarProps = {
 };
 
 export const Sidebar = ({ activeSection, onSectionChange, isMobileOpen, onClose }: SidebarProps) => {
-  const { isAdmin, profile } = useAuth();
-  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
-  
-  // Debug logging
-  console.log('Sidebar render - isAdmin:', isAdmin, 'profile:', profile);
+  const { isAdmin } = useAuth();
+  const { t } = useI18n();
+  const [adminMenuOpen, setAdminMenuOpen] = useState(true);
 
   const handleItemClick = (id: string) => {
     onSectionChange(id);
@@ -68,137 +65,60 @@ export const Sidebar = ({ activeSection, onSectionChange, isMobileOpen, onClose 
         />
       )}
 
-      <aside
-        className={`
-          fixed lg:sticky top-0 left-0 h-screen z-40 lg:z-20
-          transform transition-transform duration-300 ease-in-out
-          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
-      >
-        <div className="h-full p-4">
-          <GlassCard className="h-full p-4 w-64 flex flex-col">
-            <nav className="flex-1 space-y-2">
-              {/* User menu items */}
-              {userMenuItems.map((item) => {
+      <aside className={`oneui-sidebar ${isMobileOpen ? 'open' : ''}`}>
+        {/* Logo */}
+        <div className="oneui-logo">
+          <div className="oneui-logo-text">SwiftDevBot</div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="oneui-nav">
+          {/* User Menu Items */}
+          {userMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleItemClick(item.id)}
+                className={`oneui-nav-item ${isActive ? 'active' : ''}`}
+              >
+                <Icon className="oneui-nav-item-icon" />
+                <span className="oneui-nav-item-text">{t(item.labelKey)}</span>
+              </div>
+            );
+          })}
+
+          {/* Admin Section */}
+          {isAdmin && (
+            <>
+              <div className="oneui-nav-section">{t('sidebar.adminPanel')}</div>
+              {adminMenuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.id;
 
                 return (
-                  <button
+                  <div
                     key={item.id}
                     onClick={() => handleItemClick(item.id)}
-                    className={`
-                      w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all duration-200 group
-                      ${isActive
-                        ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border-l-4 border-cyan-400'
-                        : 'hover:bg-white/10 hover:translate-x-1'
-                      }
-                    `}
+                    className={`oneui-nav-item ${isActive ? 'active' : ''}`}
                   >
-                    <Icon
-                      className={`
-                        w-5 h-5 transition-colors
-                        ${isActive
-                          ? 'text-cyan-400'
-                          : 'text-glass-text-secondary group-hover:text-glass-text'
-                        }
-                      `}
-                    />
-                    <span
-                      className={`
-                        font-medium text-sm
-                        ${isActive
-                          ? 'text-glass-text'
-                          : 'text-glass-text-secondary group-hover:text-glass-text'
-                        }
-                      `}
-                    >
-                      {item.label}
-                    </span>
-                  </button>
+                    <Icon className="oneui-nav-item-icon" />
+                    <span className="oneui-nav-item-text">{t(item.labelKey)}</span>
+                  </div>
                 );
               })}
+            </>
+          )}
+        </nav>
 
-              {/* Admin section - only for admins */}
-              {isAdmin ? (
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="text-xs text-purple-300/50 mb-2 px-4">Admin Panel</div>
-                  <button
-                    onClick={() => setAdminMenuOpen(!adminMenuOpen)}
-                    className={`
-                      w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all duration-200 group
-                      bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30
-                      hover:from-purple-500/30 hover:to-pink-500/30
-                    `}
-                  >
-                    <Shield className="w-5 h-5 text-purple-300" />
-                    <span className="font-medium text-sm text-purple-300 flex-1 text-left">
-                      Администрирование
-                    </span>
-                    {adminMenuOpen ? (
-                      <ChevronDown className="w-4 h-4 text-purple-300" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-purple-300" />
-                    )}
-                  </button>
-
-                  {adminMenuOpen && (
-                    <div className="mt-2 space-y-1 ml-4 border-l-2 border-purple-400/30 pl-2">
-                      {adminMenuItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeSection === item.id;
-
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => handleItemClick(item.id)}
-                            className={`
-                              w-full flex items-center gap-3 px-4 py-2 rounded-lg
-                              transition-all duration-200 group
-                              ${isActive
-                                ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 border-l-2 border-purple-400'
-                                : 'hover:bg-white/10 hover:translate-x-1'
-                              }
-                            `}
-                          >
-                            <Icon
-                              className={`
-                                w-4 h-4 transition-colors
-                                ${isActive
-                                  ? 'text-purple-300'
-                                  : 'text-glass-text-secondary group-hover:text-purple-300'
-                                }
-                              `}
-                            />
-                            <span
-                              className={`
-                                font-medium text-xs
-                                ${isActive
-                                  ? 'text-purple-300'
-                                  : 'text-glass-text-secondary group-hover:text-purple-300'
-                                }
-                              `}
-                            >
-                              {item.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="text-xs text-red-300/50 px-4">
-                    Debug: isAdmin = {String(isAdmin)}, role = {profile?.role || 'undefined'}
-                  </div>
-                </div>
-              )}
-            </nav>
-
-          </GlassCard>
+        {/* Footer */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+          <div className="text-xs text-center" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+            <div className="font-semibold mb-1">SwiftDevBot</div>
+            <div>v0.1.0</div>
+          </div>
         </div>
       </aside>
     </>

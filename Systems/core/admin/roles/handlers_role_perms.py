@@ -219,7 +219,11 @@ async def _show_role_permissions_menu(
                 mod_info = services_provider.modules.get_module_info(entity_name)
                 current_level_text += f" / {mod_info.manifest.display_name if mod_info and mod_info.manifest else entity_name}"
         
-        text = f"{base_text}{current_level_text}\nОтметьте разрешения для назначения/снятия:"  # TODO: добавить в переводы
+        instruction_text = roles_texts_show.get(
+            "role_permissions_instruction",
+            admin_texts_show.get("admin_role_permissions_heading", "Отметьте разрешения для назначения/снятия:")
+        )
+        text = f"{base_text}{current_level_text}\n{instruction_text}"
         
         keyboard = await get_admin_role_edit_permissions_keyboard_local(
             target_role=target_role, 

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Zap, Sun, Moon, User, LogOut, Menu, X } from 'lucide-react';
-import { GlassCard } from './ui/GlassCard';
+import { useI18n } from '../contexts/I18nContext';
+import { Bell, Search, Sun, Moon, User, LogOut, Menu, X, Globe, Settings } from 'lucide-react';
 
 type HeaderProps = {
   onMenuToggle: () => void;
@@ -12,116 +12,224 @@ type HeaderProps = {
 export const Header = ({ onMenuToggle, isMobileMenuOpen }: HeaderProps) => {
   const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [showDropdown, setShowDropdown] = useState(false);
-  const menuButtonRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { locale, setLocale, availableLocales, t } = useI18n();
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showLangDropdown, setShowLangDropdown] = useState(false);
+  const [langDropdownPosition, setLangDropdownPosition] = useState({ top: 0, right: 0 });
+  const userButtonRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+  const langButtonRef = useRef<HTMLDivElement>(null);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Calculate dropdown position for language selector
+  useEffect(() => {
+    if (showLangDropdown && langButtonRef.current) {
+      const updatePosition = () => {
+        if (langButtonRef.current) {
+          const rect = langButtonRef.current.getBoundingClientRect();
+          setLangDropdownPosition({
+            top: rect.bottom + 8,
+            right: window.innerWidth - rect.right,
+          });
+        }
+      };
+      
+      updatePosition();
+      window.addEventListener('resize', updatePosition);
+      window.addEventListener('scroll', updatePosition, true);
+      
+      return () => {
+        window.removeEventListener('resize', updatePosition);
+        window.removeEventListener('scroll', updatePosition, true);
+      };
+    }
+  }, [showLangDropdown]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(event.target as Node)
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target as Node) &&
+        userButtonRef.current &&
+        !userButtonRef.current.contains(event.target as Node)
       ) {
-        setShowDropdown(false);
+        setShowUserDropdown(false);
+      }
+      if (
+        langDropdownRef.current &&
+        !langDropdownRef.current.contains(event.target as Node) &&
+        langButtonRef.current &&
+        !langButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowLangDropdown(false);
       }
     };
 
-    if (showDropdown) {
+    if (showUserDropdown || showLangDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
         document.removeEventListener('mousedown', handleClickOutside);
       };
     }
-  }, [showDropdown]);
+  }, [showUserDropdown, showLangDropdown]);
 
   const handleSignOut = async () => {
     await signOut();
-    setShowDropdown(false);
+    setShowUserDropdown(false);
+  };
+
+  const localeNames: Record<string, string> = {
+    en: 'English',
+    ru: 'Русский',
+    ua: 'Українська',
   };
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl">
-      <GlassCard className="m-4 p-4 overflow-visible">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onMenuToggle}
-              className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+    <header className="oneui-header" style={{ width: '100%', maxWidth: '100%' }}>
+      <div className="oneui-header-left flex-1 min-w-0">
+        <button
+          onClick={onMenuToggle}
+          className="oneui-btn-icon lg:hidden"
+          aria-label="Toggle menu"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
 
-            <div className="flex items-center gap-3">
-              <div className="logo-container">
-                <Zap className="w-8 h-8" />
-              </div>
-              <div>
-                <h1 className="logo-text text-xl font-bold">SwiftDevBot</h1>
-                <p className="text-xs text-glass-text-secondary">Control Center</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className="p-2 hover:bg-white/10 rounded-lg transition-all hover:scale-110"
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-yellow-400" />
-              ) : (
-                <Moon className="w-5 h-5 text-blue-600" />
-              )}
-            </button>
-
-            <div className="relative" ref={menuButtonRef}>
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-3 p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-glass-text">{profile?.username}</p>
-                  <p className="text-xs text-glass-text-secondary capitalize">{profile?.role}</p>
-                </div>
-              </button>
-
-              {showDropdown && (
-                <>
-                  <div
-                    className="fixed inset-0 z-[90]"
-                    onClick={() => setShowDropdown(false)}
-                  />
-                  <div 
-                    ref={dropdownRef}
-                    className="absolute right-0 mt-2 w-48 z-[100]"
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: 0,
-                    }}
-                  >
-                    <GlassCard className="p-2 shadow-2xl">
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-glass-text hover:bg-white/10 rounded-lg transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                      </button>
-                    </GlassCard>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="oneui-header-title truncate">{t('common.welcome')}</h1>
+          <p className="oneui-header-subtitle hidden sm:block">{t('common.controlCenter')}</p>
         </div>
-      </GlassCard>
+      </div>
+
+      <div className="oneui-header-right flex-shrink-0">
+        {/* Search */}
+        <div className="hidden md:flex items-center relative">
+          <Search className="absolute left-3 w-4 h-4 pointer-events-none" style={{ color: 'var(--oneui-text-muted)' }} />
+          <input
+            type="text"
+            placeholder={t('common.search')}
+            className="pl-10 pr-4 py-2 bg-transparent border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-48 lg:w-64"
+            style={{
+              backgroundColor: 'var(--oneui-bg-alt)',
+              color: 'var(--oneui-text)',
+              borderColor: 'var(--oneui-border)',
+            }}
+          />
+        </div>
+
+        {/* Language Selector */}
+        <div className="oneui-dropdown" ref={langButtonRef}>
+          <button
+            onClick={() => setShowLangDropdown(!showLangDropdown)}
+            className="oneui-btn-icon"
+            title="Change language"
+          >
+            <Globe className="w-5 h-5" />
+          </button>
+
+          {showLangDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-[90]"
+                onClick={() => setShowLangDropdown(false)}
+              />
+              <div 
+                ref={langDropdownRef} 
+                className="oneui-dropdown-menu oneui-dropdown-menu-mobile" 
+                style={{ 
+                  position: 'fixed',
+                  top: `${langDropdownPosition.top}px`,
+                  right: `${Math.max(langDropdownPosition.right, 12)}px`,
+                  left: 'auto',
+                  zIndex: 10000,
+                }}
+              >
+                {availableLocales.map((loc) => (
+                  <div
+                    key={loc}
+                    onClick={() => {
+                      setLocale(loc);
+                      setShowLangDropdown(false);
+                    }}
+                    className={`oneui-dropdown-item ${locale === loc ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''}`}
+                  >
+                    <span>{localeNames[loc]}</span>
+                    {locale === loc && (
+                      <span className="ml-auto text-indigo-600 dark:text-indigo-400">✓</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="oneui-btn-icon"
+          title={t('header.switchTheme')}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5" />
+          ) : (
+            <Moon className="w-5 h-5" />
+          )}
+        </button>
+
+        {/* Notifications */}
+        <button className="oneui-btn-icon relative" title="Notifications">
+          <Bell className="w-5 h-5" />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+
+        {/* User Menu */}
+        <div className="oneui-dropdown" ref={userButtonRef}>
+          <button
+            onClick={() => setShowUserDropdown(!showUserDropdown)}
+            className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+              {profile?.username?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="hidden sm:block text-left">
+              <div className="text-xs sm:text-sm font-medium truncate max-w-[120px] lg:max-w-none" style={{ color: 'var(--oneui-text)' }}>
+                {profile?.username || 'User'}
+              </div>
+              <div className="text-xs truncate max-w-[120px] lg:max-w-none" style={{ color: 'var(--oneui-text-muted)' }}>
+                {profile?.role || 'user'}
+              </div>
+            </div>
+          </button>
+
+          {showUserDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-[90]"
+                onClick={() => setShowUserDropdown(false)}
+              />
+              <div ref={userDropdownRef} className="oneui-dropdown-menu" style={{ right: 0, minWidth: '220px' }}>
+                <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--oneui-border)' }}>
+                  <div className="text-sm font-medium" style={{ color: 'var(--oneui-text)' }}>
+                    {profile?.username || 'User'}
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: 'var(--oneui-text-muted)' }}>
+                    {profile?.role || 'user'}
+                  </div>
+                </div>
+                <div className="oneui-dropdown-item">
+                  <User className="oneui-dropdown-item-icon" />
+                  <span>{t('sidebar.settings')}</span>
+                </div>
+                <div className="oneui-dropdown-item" onClick={handleSignOut}>
+                  <LogOut className="oneui-dropdown-item-icon" />
+                  <span>{t('header.signOut')}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </header>
   );
 };

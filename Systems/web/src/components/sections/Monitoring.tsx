@@ -1,67 +1,85 @@
-import { GlassCard } from '../ui/GlassCard';
-import { Activity, Cpu, HardDrive, Wifi, Zap } from 'lucide-react';
+import { Activity, Cpu, HardDrive, Wifi } from 'lucide-react';
 
 export const Monitoring = () => {
   const metrics = [
-    { label: 'CPU Usage', value: 45, icon: Cpu, color: 'from-cyan-400 to-blue-500' },
-    { label: 'Memory', value: 62, icon: Activity, color: 'from-purple-400 to-pink-500' },
-    { label: 'Disk I/O', value: 28, icon: HardDrive, color: 'from-green-400 to-emerald-500' },
-    { label: 'Network', value: 71, icon: Wifi, color: 'from-orange-400 to-red-500' },
+    { label: 'CPU Usage', value: 45, icon: Cpu, color: 'oneui-stat-icon-primary' },
+    { label: 'Memory', value: 62, icon: Activity, color: 'oneui-stat-icon-success' },
+    { label: 'Disk I/O', value: 28, icon: HardDrive, color: 'oneui-stat-icon-warning' },
+    { label: 'Network', value: 71, icon: Wifi, color: 'oneui-stat-icon-danger' },
   ];
 
   const requests = Array.from({ length: 50 }, () => Math.random() * 100);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-glass-text mb-2">System Monitoring</h2>
-        <p className="text-glass-text-secondary">Real-time performance metrics and health status</p>
+    <div>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--oneui-text)' }}>
+          System Monitoring
+        </h1>
+        <p className="oneui-text-muted">Real-time performance metrics and health status</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
-            <GlassCard key={metric.label} hover glow className="p-6">
+            <div key={metric.label} className="oneui-card">
               <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.color} bg-opacity-20`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div className={`oneui-stat-icon ${metric.color}`}>
+                  <Icon className="w-6 h-6" />
                 </div>
-                <span className="text-2xl font-bold text-glass-text">{metric.value}%</span>
+                <span className="text-2xl font-bold" style={{ color: 'var(--oneui-text)' }}>
+                  {metric.value}%
+                </span>
               </div>
-              <p className="text-glass-text-secondary text-sm mb-2">{metric.label}</p>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <p className="text-sm oneui-text-muted mb-3">{metric.label}</p>
+              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
-                  className={`h-full bg-gradient-to-r ${metric.color} rounded-full transition-all duration-500`}
-                  style={{ width: `${metric.value}%` }}
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${metric.value}%`,
+                    backgroundColor: metric.color.includes('primary') ? 'var(--oneui-primary)' :
+                                    metric.color.includes('success') ? 'var(--oneui-success)' :
+                                    metric.color.includes('warning') ? 'var(--oneui-warning)' :
+                                    'var(--oneui-danger)',
+                  }}
                 />
               </div>
-            </GlassCard>
+            </div>
           );
         })}
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GlassCard className="p-6" glow>
-          <h3 className="text-xl font-bold text-glass-text mb-4">Request Rate</h3>
+        {/* Request Rate */}
+        <div className="oneui-card">
+          <div className="oneui-card-header">
+            <h3 className="oneui-card-title">Request Rate</h3>
+          </div>
           <div className="h-48 flex items-end gap-1">
             {requests.map((height, i) => (
               <div
                 key={i}
-                className="flex-1 bg-gradient-to-t from-cyan-500 to-purple-500 rounded-t transition-all hover:opacity-80"
+                className="flex-1 bg-gradient-to-t from-indigo-500 to-purple-600 rounded-t transition-all hover:opacity-80"
                 style={{ height: `${height}%`, minHeight: '2px' }}
               />
             ))}
           </div>
-          <div className="flex justify-between mt-4 text-xs text-glass-text-secondary">
+          <div className="flex justify-between mt-4 text-xs oneui-text-muted">
             <span>0s</span>
             <span>25s</span>
             <span>50s</span>
           </div>
-        </GlassCard>
+        </div>
 
-        <GlassCard className="p-6" glow>
-          <h3 className="text-xl font-bold text-glass-text mb-4">Response Times</h3>
+        {/* Response Times */}
+        <div className="oneui-card">
+          <div className="oneui-card-header">
+            <h3 className="oneui-card-title">Response Times</h3>
+          </div>
           <div className="space-y-4">
             {[
               { endpoint: '/api/messages', time: 45, color: 'bg-green-500' },
@@ -71,47 +89,24 @@ export const Monitoring = () => {
             ].map((endpoint) => (
               <div key={endpoint.endpoint}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-glass-text font-mono">{endpoint.endpoint}</span>
-                  <span className="text-sm font-semibold text-glass-text">{endpoint.time}ms</span>
+                  <span className="text-sm font-mono" style={{ color: 'var(--oneui-text)' }}>
+                    {endpoint.endpoint}
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--oneui-text)' }}>
+                    {endpoint.time}ms
+                  </span>
                 </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${endpoint.color} rounded-full transition-all duration-500`}
-                    style={{ width: `${endpoint.time}%` }}
+                    style={{ width: `${Math.min(endpoint.time, 100)}%` }}
                   />
                 </div>
               </div>
             ))}
           </div>
-        </GlassCard>
-      </div>
-
-      <GlassCard className="p-6" glow>
-        <h3 className="text-xl font-bold text-glass-text mb-6">Active Connections</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { label: 'WebSocket Connections', value: 127, icon: Zap, change: '+12' },
-            { label: 'Database Connections', value: 34, icon: HardDrive, change: '+3' },
-            { label: 'API Requests/min', value: 1453, icon: Activity, change: '+89' },
-          ].map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div key={stat.label} className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-cyan-500/20">
-                  <Icon className="w-6 h-6 text-cyan-400" />
-                </div>
-                <div>
-                  <p className="text-glass-text-secondary text-sm">{stat.label}</p>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-glass-text">{stat.value}</p>
-                    <span className="text-sm text-green-400 font-semibold">{stat.change}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };

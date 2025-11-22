@@ -81,8 +81,8 @@ async def cq_admin_users_list_entry(
         users_on_page: List[DBUser] = list(users_result.scalars().all())
 
         text = users_texts["user_list_title_template"].format(current_page=current_page, total_pages=total_pages)
-        if total_users == 0 : 
-             text = "👥 Пользователи\n\nВ базе данных нет зарегистрированных пользователей."  # TODO: добавить в переводы
+        if total_users == 0:
+             text = users_texts.get("no_users_registered_notice", "👥 Пользователи\n\nВ базе данных нет зарегистрированных пользователей.")
 
         keyboard = await get_admin_users_list_keyboard_local(users_on_page, total_pages, current_page, services_provider, user_locale)
 

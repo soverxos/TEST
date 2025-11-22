@@ -95,9 +95,12 @@ class ModuleMetadata(BaseModel):
     tags: List[str] = Field(default_factory=list)
     min_sdb_core_version: Optional[str] = Field(default=None)
     assign_default_access_to_user_role: bool = Field( # <--- НОВОЕ ПОЛЕ
-        default=False, 
-        description="Если true, базовое разрешение '{module_name}.access_user_features' будет автоматически назначено роли 'User'."
+        default=False,
+        alias="public_access",  # Короткий алиас для удобства
+        description="Если true, базовое разрешение '{module_name}.access_user_features' будет автоматически назначено роли 'User'. Можно использовать короткое имя 'public_access'."
     )
+    
+    model_config = {"populate_by_name": True}  # Позволяет использовать и оригинальное имя, и алиас
 
     @field_validator('min_sdb_core_version', mode='before')
     @classmethod

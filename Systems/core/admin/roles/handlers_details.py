@@ -90,14 +90,17 @@ async def cq_admin_role_view_details_entry(
         
         logger.debug(f"[{MODULE_NAME_FOR_LOG}] Роль '{role.name}' найдена, генерация текста и клавиатуры...")
         permissions_list_str = "\n".join(
-            [f"  ▫️ {hcode(p.name)} ({hitalic(p.description or 'без описания')})" for p in sorted(role.permissions, key=lambda x: x.name)]
-        ) if role.permissions else "  (нет назначенных разрешений)"  # TODO: добавить в переводы
+            [
+                f"  ▫️ {hcode(p.name)} ({hitalic(p.description or 'без описания')})"
+                for p in sorted(role.permissions, key=lambda x: x.name)
+            ]
+        ) if role.permissions else roles_texts.get("role_no_permissions", "  (нет назначенных разрешений)")
 
         text_parts = [
             f"{roles_texts['role_details_title']}: {hcode(role.name)}",
             f"   DB ID: {hcode(str(role.id))}",
-            f"   Описание: {hitalic(role.description or 'отсутствует')}",  # TODO: добавить в переводы
-            f"\n{hbold('Разрешения этой роли:')}",  # TODO: добавить в переводы
+            f"   {roles_texts.get('role_description_label', 'Описание:')} {hitalic(role.description or 'отсутствует')}",
+            f"\n{roles_texts.get('role_permissions_label', 'Разрешения этой роли:')}",
             permissions_list_str
         ]
         text = "\n".join(text_parts)

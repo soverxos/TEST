@@ -1,7 +1,9 @@
 {
-    "active_modules": [
-        "universal_template",
-        "ai_chat",
-        "broadcast"
-    ]
+  "active_modules": [
+    "ai_chat",
+    "broadcast",
+    "sys_status",
+    "universal_template"
+  ],
+  "disabled_modules": []
 }

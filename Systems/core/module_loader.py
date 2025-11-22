@@ -33,6 +33,68 @@ USER_MODULES_SETTINGS_DIR_NAME = "modules_settings"
 MODULE_DEFAULT_SETTINGS_FILENAME = "module_settings.yaml"
 
 
+def get_module_required_permission(module_name: str, manifest: Optional[ModuleManifest]) -> Optional[str]:
+    """
+    Определяет разрешение, необходимое для доступа к модулю.
+    
+    Логика:
+    1. Если модуль помечен assign_default_access_to_user_role=True, возвращает None (доступен всем)
+    2. Если есть declared_permissions, возвращает первое разрешение
+    3. Иначе возвращает None (доступен всем)
+    
+    Args:
+        module_name: Имя модуля
+        manifest: Манифест модуля
+        
+    Returns:
+        Имя разрешения или None, если модуль доступен всем
+    """
+    if not manifest:
+        return None
+    
+    # Если модуль помечен для авто-назначения, делаем доступным всем
+    if manifest.metadata and manifest.metadata.assign_default_access_to_user_role:
+        return None
+    
+    # Если есть разрешения, возвращаем первое
+    if manifest.declared_permissions:
+        return manifest.declared_permissions[0].name
+    
+    # Иначе доступен всем
+    return None
+
+
+def get_module_permission_to_check(module_name: str, manifest: Optional[ModuleManifest]) -> Optional[str]:
+    """
+    Определяет разрешение, которое нужно проверить для доступа к командам модуля.
+    
+    Логика:
+    1. Если модуль помечен assign_default_access_to_user_role=True, возвращает {module_name}.access_user_features
+    2. Если есть declared_permissions, возвращает первое разрешение
+    3. Иначе возвращает None (доступ без проверки)
+    
+    Args:
+        module_name: Имя модуля
+        manifest: Манифест модуля
+        
+    Returns:
+        Имя разрешения для проверки или None, если проверка не требуется
+    """
+    if not manifest:
+        return None
+    
+    # Если модуль помечен для авто-назначения, используем базовое разрешение
+    if manifest.metadata and manifest.metadata.assign_default_access_to_user_role:
+        return f"{module_name}.access_user_features"
+    
+    # Если есть разрешения, возвращаем первое
+    if manifest.declared_permissions:
+        return manifest.declared_permissions[0].name
+    
+    # Иначе проверка не требуется
+    return None
+
+
 class ModuleInfo:
     def __init__(
         self,
@@ -482,17 +544,8 @@ class ModuleLoader:
         if not icon:
             icon = "🧩"  # Дефолтная иконка модуля
         
-        # Определяем разрешение для просмотра: берем первое разрешение модуля, если есть
-        # Если разрешений нет или metadata.assign_default_access_to_user_role=True, делаем доступным всем
-        required_permission = None
-        if manifest.declared_permissions:
-            # Берем первое разрешение как базовое для просмотра
-            first_permission = manifest.declared_permissions[0]
-            required_permission = first_permission.name
-        elif manifest.metadata and manifest.metadata.assign_default_access_to_user_role:
-            # Если модуль помечен для авто-назначения, используем базовое разрешение
-            required_permission = f"{module_name}.access_user_features"
-        # Если разрешений нет и не помечен для авто-назначения, required_permission остается None (доступен всем)
+        # Определяем разрешение для просмотра модуля в меню
+        required_permission = get_module_required_permission(module_name, manifest)
         
         # Создаем callback data для входа в модуль
         from Systems.core.ui.callback_data_factories import ModuleMenuEntry

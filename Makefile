@@ -16,6 +16,9 @@ dev: ## Установить зависимости для разработки
 test: ## Запустить тесты
 	pytest tests/ -v
 
+web-test: ## Запустить web API тесты через .venv
+	. .venv/bin/activate && pytest tests/test_web_app.py
+
 test-cov: ## Запустить тесты с покрытием
 	pytest tests/ --cov=Systems/core --cov-report=html --cov-report=term
 

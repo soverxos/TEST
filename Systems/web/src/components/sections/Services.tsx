@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { GlassCard } from '../ui/GlassCard';
-import { GlassButton } from '../ui/GlassButton';
 import { Server, Play, Pause, RotateCw, AlertCircle } from 'lucide-react';
 
 type ServiceStatus = 'running' | 'stopped' | 'restarting';
@@ -68,62 +66,69 @@ export const Services = () => {
     }));
   };
 
-  const getStatusColor = (status: ServiceStatus) => {
-    switch (status) {
-      case 'running':
-        return 'text-green-400 bg-green-500/10 border-green-500/30';
-      case 'stopped':
-        return 'text-red-400 bg-red-500/10 border-red-500/30';
-      case 'restarting':
-        return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
-    }
-  };
+  const runningCount = services.filter(s => s.status === 'running').length;
+  const stoppedCount = services.filter(s => s.status === 'stopped').length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-glass-text mb-2">Service Management</h2>
-        <p className="text-glass-text-secondary">Control and monitor bot services</p>
+    <div>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--oneui-text)' }}>
+          Service Management
+        </h1>
+        <p className="oneui-text-muted">Control and monitor bot services</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         {[
-          { label: 'Total Services', value: services.length, color: 'text-cyan-400' },
-          { label: 'Running', value: services.filter(s => s.status === 'running').length, color: 'text-green-400' },
-          { label: 'Stopped', value: services.filter(s => s.status === 'stopped').length, color: 'text-red-400' },
-          { label: 'Health', value: '98%', color: 'text-purple-400' },
+          { label: 'Total Services', value: services.length, color: 'oneui-text-primary' },
+          { label: 'Running', value: runningCount, color: 'oneui-text-success' },
+          { label: 'Stopped', value: stoppedCount, color: 'oneui-text-danger' },
+          { label: 'Health', value: '98%', color: 'oneui-text-primary' },
         ].map((stat) => (
-          <GlassCard key={stat.label} hover className="p-6">
-            <p className="text-glass-text-secondary text-sm mb-1">{stat.label}</p>
+          <div key={stat.label} className="oneui-card">
+            <p className="text-sm oneui-text-muted mb-1">{stat.label}</p>
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-          </GlassCard>
+          </div>
         ))}
       </div>
 
+      {/* Services List */}
       <div className="space-y-4">
         {services.map((service) => (
-          <GlassCard key={service.id} className="p-6" glow>
+          <div key={service.id} className="oneui-card">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-4 flex-1">
-                <div className="p-3 rounded-xl bg-cyan-500/20">
-                  <Server className="w-6 h-6 text-cyan-400" />
+                <div className="oneui-stat-icon oneui-stat-icon-primary">
+                  <Server className="w-6 h-6" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-bold text-glass-text">{service.name}</h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getStatusColor(service.status)}`}>
+                    <h3 className="text-lg font-bold" style={{ color: 'var(--oneui-text)' }}>
+                      {service.name}
+                    </h3>
+                    <span className={`oneui-badge ${
+                      service.status === 'running' ? 'oneui-badge-success' :
+                      service.status === 'stopped' ? 'oneui-badge-danger' :
+                      'oneui-badge-warning'
+                    }`}>
                       {service.status}
                     </span>
                   </div>
-                  <p className="text-glass-text-secondary mb-3">{service.description}</p>
-                  <div className="flex gap-4 text-sm">
+                  <p className="oneui-text-muted text-sm mb-3">{service.description}</p>
+                  <div className="flex gap-6 text-sm">
                     <div>
-                      <span className="text-glass-text-secondary">Uptime: </span>
-                      <span className="text-glass-text font-medium">{service.uptime}</span>
+                      <span className="oneui-text-muted">Uptime: </span>
+                      <span className="font-medium" style={{ color: 'var(--oneui-text)' }}>
+                        {service.uptime}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-glass-text-secondary">Memory: </span>
-                      <span className="text-glass-text font-medium">{service.memory}</span>
+                      <span className="oneui-text-muted">Memory: </span>
+                      <span className="font-medium" style={{ color: 'var(--oneui-text)' }}>
+                        {service.memory}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -131,49 +136,52 @@ export const Services = () => {
 
               <div className="flex gap-2">
                 {service.status === 'stopped' ? (
-                  <GlassButton
-                    size="sm"
-                    variant="primary"
+                  <button
                     onClick={() => handleServiceAction(service.id, 'start')}
+                    className="oneui-btn oneui-btn-primary"
+                    style={{ padding: '0.5rem' }}
                   >
                     <Play className="w-4 h-4" />
-                  </GlassButton>
+                  </button>
                 ) : (
-                  <GlassButton
-                    size="sm"
-                    variant="danger"
+                  <button
                     onClick={() => handleServiceAction(service.id, 'stop')}
+                    className="oneui-btn oneui-btn-secondary"
+                    style={{ padding: '0.5rem' }}
                     disabled={service.status === 'restarting'}
                   >
                     <Pause className="w-4 h-4" />
-                  </GlassButton>
+                  </button>
                 )}
-                <GlassButton
-                  size="sm"
-                  variant="secondary"
+                <button
                   onClick={() => handleServiceAction(service.id, 'restart')}
+                  className="oneui-btn oneui-btn-secondary"
+                  style={{ padding: '0.5rem' }}
                   disabled={service.status === 'stopped' || service.status === 'restarting'}
                 >
                   <RotateCw className={`w-4 h-4 ${service.status === 'restarting' ? 'animate-spin' : ''}`} />
-                </GlassButton>
+                </button>
               </div>
             </div>
-          </GlassCard>
+          </div>
         ))}
       </div>
 
-      <GlassCard className="p-6 bg-orange-500/5 border-orange-500/20">
+      {/* Warning */}
+      <div className="oneui-card mt-6 border-l-4" style={{ borderLeftColor: 'var(--oneui-warning)' }}>
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-6 h-6 text-orange-400 flex-shrink-0 mt-1" />
+          <AlertCircle className="w-6 h-6 text-orange-500 flex-shrink-0 mt-1" />
           <div>
-            <h3 className="text-lg font-bold text-orange-400 mb-2">Warning</h3>
-            <p className="text-glass-text-secondary">
+            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--oneui-warning)' }}>
+              Warning
+            </h3>
+            <p className="oneui-text-muted">
               Stopping critical services may affect bot functionality. Always ensure proper backups
               before making changes to production services.
             </p>
           </div>
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };

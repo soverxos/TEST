@@ -21,7 +21,8 @@ from .keyboards_core import (
 from Systems.core.database.core_models import User as DBUser 
 from Systems.core.ui.registry_ui import ModuleUIEntry 
 from sqlalchemy import select 
-from Systems.core.i18n.translator import Translator 
+from Systems.core.i18n.translator import Translator
+from Systems.core.module_loader import get_module_permission_to_check 
 
 from typing import TYPE_CHECKING, Optional, List, Union, Dict
 if TYPE_CHECKING:
@@ -218,6 +219,15 @@ async def handle_help_command(
                                 )
                                 if not has_admin_permission:
                                     continue
+                        
+                        # Проверяем разрешения модуля для команды (если есть)
+                        permission_to_check = get_module_permission_to_check(module_info.name, module_info.manifest)
+                        if permission_to_check:
+                            has_permission = await services_provider.rbac.user_has_permission(
+                                session, sdb_user.telegram_id, permission_to_check
+                            )
+                            if not has_permission:
+                                continue
                         
                         cmd_name = cmd_manifest.command.lstrip("/")
                         cmd_desc = cmd_manifest.description or "Без описания"
@@ -455,10 +465,10 @@ async def handle_module_command_fallback(
                                 return
                     
                     # Проверка разрешений модуля
-                    if module_info.manifest.declared_permissions:
-                        first_permission = module_info.manifest.declared_permissions[0]
+                    permission_to_check = get_module_permission_to_check(module_info.name, module_info.manifest)
+                    if permission_to_check:
                         has_permission = await services_provider.rbac.user_has_permission(
-                            session, sdb_user.telegram_id, first_permission.name
+                            session, sdb_user.telegram_id, permission_to_check
                         )
                         if not has_permission:
                             await message.answer("❌ У вас нет прав для использования этой команды")
@@ -473,7 +483,8 @@ async def handle_module_command_fallback(
                 module_entry = services_provider.ui_registry.get_module_entry(module_info.name)
                 if module_entry:
                     # Показываем UI модуля
-                    from aiogram.types import InlineKeyboardButton, InlineKeyboardBuilder
+                    from aiogram.types import InlineKeyboardButton
+                    from aiogram.utils.keyboard import InlineKeyboardBuilder
                     
                     icon = module_entry.icon or "🧩"
                     display_name = module_entry.display_name or module_info.name
@@ -1294,11 +1305,10 @@ async def cq_module_entry_default(
                             continue
                 
                 # Проверяем разрешения модуля для команды (если есть)
-                # Используем первое разрешение модуля как базовое для доступа к команде
-                if module_info.manifest.declared_permissions:
-                    first_permission = module_info.manifest.declared_permissions[0]
+                permission_to_check = get_module_permission_to_check(module_info.name, module_info.manifest)
+                if permission_to_check:
                     has_permission = await services_provider.rbac.user_has_permission(
-                        session, user_id, first_permission.name
+                        session, user_id, permission_to_check
                     )
                     if not has_permission:
                         continue
@@ -1446,10 +1456,10 @@ async def cq_module_action(
                     return
         
         # Проверка разрешений модуля
-        if module_info.manifest.declared_permissions:
-            first_permission = module_info.manifest.declared_permissions[0]
+        permission_to_check = get_module_permission_to_check(module_info.name, module_info.manifest)
+        if permission_to_check:
             has_permission = await services_provider.rbac.user_has_permission(
-                session, user_id, first_permission.name
+                session, user_id, permission_to_check
             )
             if not has_permission:
                 await query.answer("❌ У вас нет прав для использования этой команды", show_alert=True)

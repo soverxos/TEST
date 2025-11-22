@@ -64,6 +64,12 @@ try:
         if not info.is_system_module and name in module_loader_for_alembic.enabled_plugin_names and info.manifest and info.path
     ]
 
+    # Счетчики и список ошибок для статистики
+    import_errors: List[tuple[str, str, Exception]] = []  # (module_name, import_target, error)
+    successful_imports = 0
+    failed_imports = 0
+    skipped_modules = 0  # Модули без models.py/models/
+    
     if active_plugin_module_infos:
         print(f"[Alembic Env] Найдено {len(active_plugin_module_infos)} активных плагинов для проверки моделей.")
         for module_info in active_plugin_module_infos:
@@ -72,33 +78,77 @@ try:
             module_models_pkg_init = module_info.path / "models" / "__init__.py"
             
             imported_this_module = False
+            import_target = f"Modules.{module_info.path.name}.models"
+            
+            # Попытка импорта из файла models.py
             if module_models_file.is_file():
-                # Для плагинов базовый путь импорта "Modules"
-                import_target = f"Modules.{module_info.path.name}.models"
                 print(f"[Alembic Env] Попытка импорта моделей из файла: {import_target}")
                 try:
                     importlib.import_module(import_target)
-                    print(f"[Alembic Env] > Успешно импортированы модели из файла: {import_target}")
+                    print(f"[Alembic Env] > ✅ Успешно импортированы модели из файла: {import_target}")
                     imported_this_module = True
+                    successful_imports += 1
+                except SyntaxError as e_syntax:
+                    error_msg = f"SyntaxError в {import_target}: {e_syntax}"
+                    print(f"[Alembic Env] > ❌ {error_msg}")
+                    import_errors.append((module_info.name, import_target, e_syntax))
+                    failed_imports += 1
                 except ImportError as e_imp_f:
-                    print(f"[Alembic Env] > Ошибка импорта моделей из файла {import_target}: {e_imp_f}")
+                    error_msg = f"ImportError в {import_target}: {e_imp_f}"
+                    print(f"[Alembic Env] > ❌ {error_msg}")
+                    import_errors.append((module_info.name, import_target, e_imp_f))
+                    failed_imports += 1
                 except Exception as e_f:
-                    print(f"[Alembic Env] > Неожиданная ошибка при импорте моделей из файла {import_target}: {type(e_f).__name__} - {e_f}")
+                    error_msg = f"Неожиданная ошибка при импорте {import_target}: {type(e_f).__name__} - {e_f}"
+                    print(f"[Alembic Env] > ⚠️ {error_msg}")
+                    import_errors.append((module_info.name, import_target, e_f))
+                    failed_imports += 1
             
+            # Попытка импорта из пакета models/__init__.py
             if not imported_this_module and module_models_pkg_init.is_file():
-                import_target = f"Modules.{module_info.path.name}.models" 
                 print(f"[Alembic Env] Попытка импорта моделей из пакета: {import_target}")
                 try:
                     importlib.import_module(import_target)
-                    print(f"[Alembic Env] > Успешно импортирован пакет моделей: {import_target}")
+                    print(f"[Alembic Env] > ✅ Успешно импортирован пакет моделей: {import_target}")
+                    imported_this_module = True
+                    successful_imports += 1
+                except SyntaxError as e_syntax:
+                    error_msg = f"SyntaxError в {import_target}: {e_syntax}"
+                    print(f"[Alembic Env] > ❌ {error_msg}")
+                    import_errors.append((module_info.name, import_target, e_syntax))
+                    failed_imports += 1
                 except ImportError as e_imp_p:
-                    print(f"[Alembic Env] > Ошибка импорта пакета моделей {import_target}: {e_imp_p}")
+                    error_msg = f"ImportError в {import_target}: {e_imp_p}"
+                    print(f"[Alembic Env] > ❌ {error_msg}")
+                    import_errors.append((module_info.name, import_target, e_imp_p))
+                    failed_imports += 1
                 except Exception as e_p:
-                    print(f"[Alembic Env] > Неожиданная ошибка при импорте пакета моделей {import_target}: {type(e_p).__name__} - {e_p}")
-            elif not imported_this_module and not module_models_file.is_file():
-                 print(f"[Alembic Env] > Для плагина '{module_info.name}' не найден ни файл models.py, ни пакет models/__init__.py.")
+                    error_msg = f"Неожиданная ошибка при импорте {import_target}: {type(e_p).__name__} - {e_p}"
+                    print(f"[Alembic Env] > ⚠️ {error_msg}")
+                    import_errors.append((module_info.name, import_target, e_p))
+                    failed_imports += 1
+            
+            # Модуль без models.py/models/
+            if not imported_this_module and not module_models_file.is_file() and not module_models_pkg_init.is_file():
+                print(f"[Alembic Env] > ⚠️ Для плагина '{module_info.name}' не найден ни файл models.py, ни пакет models/__init__.py (пропущен).")
+                skipped_modules += 1
     else:
         print("[Alembic Env] Активных плагинов для импорта моделей не найдено.")
+    
+    # Вывод итоговой статистики
+    print(f"\n[Alembic Env] ===== Статистика импорта моделей =====")
+    print(f"[Alembic Env] Успешно импортировано: {successful_imports}")
+    print(f"[Alembic Env] Ошибок импорта: {failed_imports}")
+    print(f"[Alembic Env] Пропущено (без models): {skipped_modules}")
+    
+    # Если были критические ошибки (SyntaxError, ImportError), завершаем с ошибкой
+    if import_errors:
+        print(f"\n[ALEMBIC ENV ERROR] Обнаружены ошибки при импорте моделей {len(import_errors)} модулей:")
+        for module_name, import_target, error in import_errors:
+            print(f"  - Модуль '{module_name}' ({import_target}): {type(error).__name__} - {error}")
+        print("\n[ALEMBIC ENV ERROR] Пожалуйста, исправьте ошибки в моделях модулей перед выполнением миграций.")
+        print("[ALEMBIC ENV ERROR] Alembic не может продолжить работу с некорректными моделями.")
+        sys.exit(1)
     
     # Если у вас есть системные модули в Systems/core/sys_modules/ с моделями,
     # и они не импортируются автоматически (например, через Systems.core.database.core_models),

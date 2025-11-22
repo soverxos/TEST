@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { GlassCard } from '../components/ui/GlassCard';
-import { GlassButton } from '../components/ui/GlassButton';
-import { GlassInput } from '../components/ui/GlassInput';
 import { Lock, Zap, Shield } from 'lucide-react';
 
 export const CloudPasswordPrompt = () => {
@@ -27,8 +24,6 @@ export const CloudPasswordPrompt = () => {
       console.log('Verifying cloud password...');
       await verifyCloudPassword(password);
       console.log('Cloud password verified successfully');
-      // State will be updated by verifyCloudPassword, which will trigger App re-render
-      // Don't set loading to false here - let the component re-render naturally
       setPassword('');
     } catch (err) {
       console.error('Cloud password verification error:', err);
@@ -40,71 +35,90 @@ export const CloudPasswordPrompt = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="w-full max-w-md relative z-10">
-        <GlassCard className="p-8" glow>
-          <div className="flex flex-col items-center mb-8">
-            <div className="logo-container mb-4">
-              <Zap className="w-16 h-16" />
+    <div className="min-h-screen flex items-center justify-center p-4 py-8" style={{ backgroundColor: 'var(--oneui-bg-alt)', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+      <div className="w-full max-w-md mx-auto" style={{ width: '100%', maxWidth: 'min(100% - 2rem, 28rem)' }}>
+        <div className="oneui-card" style={{ width: '100%' }}>
+          <div className="flex flex-col items-center mb-6 sm:mb-8">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-3 sm:mb-4">
+              <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
             </div>
-            <h1 className="logo-text text-4xl font-bold mb-2">SwiftDevBot</h1>
-            <p className="text-glass-text-secondary text-sm">
-              Введите облачный пароль
-            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: 'var(--oneui-text)' }}>SwiftDevBot</h1>
+            <p className="oneui-text-muted text-xs sm:text-sm text-center px-4">Введите облачный пароль</p>
           </div>
 
-          <div className="mb-6 p-4 rounded-xl bg-purple-500/10 border border-purple-400/30">
-            <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-glass-text mb-1">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg border-l-4" style={{ 
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            borderLeftColor: 'var(--oneui-secondary)',
+          }}>
+            <div className="flex items-start gap-2 sm:gap-3">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium mb-1" style={{ color: 'var(--oneui-text)' }}>
                   Дополнительная защита
                 </p>
-                <p className="text-xs text-glass-text-secondary">
+                <p className="text-xs oneui-text-muted leading-relaxed">
                   Для доступа к панели требуется ввести ваш облачный пароль.
                 </p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <GlassInput
-              label="Облачный пароль"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Введите ваш пароль"
-              required
-              autoFocus
-            />
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            <div>
+              <label className="block text-xs sm:text-sm font-medium mb-2" style={{ color: 'var(--oneui-text)' }}>
+                Облачный пароль
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Введите ваш пароль"
+                  required
+                  autoFocus
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  style={{
+                    backgroundColor: 'var(--oneui-bg-alt)',
+                    borderColor: 'var(--oneui-border)',
+                    color: 'var(--oneui-text)',
+                  }}
+                />
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 oneui-text-muted pointer-events-none" />
+              </div>
+            </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              <div className="p-3 rounded-lg border-l-4 text-xs sm:text-sm" style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderLeftColor: 'var(--oneui-danger)',
+                color: 'var(--oneui-danger)',
+              }}>
                 {error}
               </div>
             )}
 
-            <GlassButton
+            <button
               type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full"
+              className="oneui-btn oneui-btn-primary w-full flex items-center justify-center gap-2 py-2.5 sm:py-2 text-sm sm:text-base"
               disabled={loading || !password}
             >
               {loading ? (
-                'Проверка...'
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Проверка...
+                </span>
               ) : (
                 <>
-                  <Lock className="w-4 h-4 mr-2" />
+                  <Lock className="w-4 h-4" />
                   Войти
                 </>
               )}
-            </GlassButton>
+            </button>
           </form>
-        </GlassCard>
+        </div>
 
-        <div className="text-center mt-8">
-          <p className="footer-text text-sm">
+        <div className="text-center mt-6 sm:mt-8">
+          <p className="text-xs sm:text-sm oneui-text-muted">
             SwiftDevBot — created by <span className="font-semibold">SoverX</span>
           </p>
         </div>
@@ -112,4 +126,3 @@ export const CloudPasswordPrompt = () => {
     </div>
   );
 };
-

@@ -185,9 +185,9 @@ async def process_fsm_role_description_crud(
             except Exception as e_commit:
                 await session.rollback()
                 logger.error(f"[{MODULE_NAME_FOR_LOG}] Ошибка commit при создании роли '{role_name}': {e_commit}", exc_info=True)
-                await message.answer(admin_texts["admin_error_saving"])  # TODO: добавить более специфичное сообщение
+                await message.answer(admin_texts.get("admin_error_saving_role", admin_texts["admin_error_saving"]))
         else:
-            await message.answer(admin_texts["admin_error_saving"])  # TODO: добавить более специфичное сообщение
+            await message.answer(admin_texts.get("admin_error_saving_role", admin_texts["admin_error_saving"]))
         
         await state.clear()
         

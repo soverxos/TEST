@@ -1,12 +1,13 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { I18nProvider, useI18n } from './contexts/I18nContext';
 import { CloudPasswordSetup } from './pages/CloudPasswordSetup';
 import { CloudPasswordPrompt } from './pages/CloudPasswordPrompt';
 import { Dashboard } from './pages/Dashboard';
-import { AnimatedBackground } from './components/AnimatedBackground';
 
 const AppContent = () => {
   const { user, loading, cloudPasswordSetup, cloudPasswordVerified } = useAuth();
+  const { t } = useI18n();
   
   // Debug logging
   console.log('AppContent render:', { 
@@ -37,65 +38,43 @@ const AppContent = () => {
   if (user && !cloudPasswordVerified) {
     if (cloudPasswordSetup === false) {
       // First time - need to setup cloud password
-      return (
-        <>
-          <AnimatedBackground />
-          <div className="relative z-10">
-            <CloudPasswordSetup />
-          </div>
-        </>
-      );
+      return <CloudPasswordSetup />;
     } else {
       // Cloud password exists - need to verify
-      return (
-        <>
-          <AnimatedBackground />
-          <div className="relative z-10">
-            <CloudPasswordPrompt />
-          </div>
-        </>
-      );
+      return <CloudPasswordPrompt />;
     }
   }
 
   // User is logged in and cloud password verified
   if (user && cloudPasswordVerified) {
-    return (
-      <>
-        <AnimatedBackground />
-        <div className="relative z-10">
-          <Dashboard />
-        </div>
-      </>
-    );
+    return <Dashboard />;
   }
 
   // No user - show message that login is only via token
   return (
-    <>
-      <AnimatedBackground />
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="logo-text text-4xl font-bold mb-4">SwiftDevBot</h1>
-          <p className="text-glass-text-secondary mb-6">
-            Для входа в панель используйте команду <code className="bg-white/10 px-2 py-1 rounded">/login</code> в Telegram боте
-          </p>
-          <p className="text-sm text-glass-text-secondary">
-            Вы получите ссылку для входа в веб-панель
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--oneui-bg-alt)' }}>
+      <div className="text-center max-w-md oneui-card">
+        <h1 className="text-3xl font-bold mb-4" style={{ color: 'var(--oneui-text)' }}>SwiftDevBot</h1>
+        <p className="oneui-text-muted mb-6">
+          {t('auth.loginViaTelegram')} <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">/login</code>
+        </p>
+        <p className="text-sm oneui-text-muted">
+          {t('auth.loginLink')}
+        </p>
       </div>
-    </>
+    </div>
   );
 };
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ThemeProvider>
+    <I18nProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
+    </I18nProvider>
   );
 }
 

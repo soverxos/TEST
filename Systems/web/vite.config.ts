@@ -10,7 +10,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    // Vite автоматически копирует файлы из public в dist
   },
+  publicDir: 'public',
   server: {
     proxy: {
       '/api': {

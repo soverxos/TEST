@@ -1,9 +1,0 @@
-{
-  "sdb_core_team": {
-    "name": "SDB Core Team",
-    "email": "core@sdb.dev",
-    "key_id": "SDB-CORE-2024",
-    "reputation": "trusted",
-    "description": "Официальная команда разработки SDB"
-  }
-}

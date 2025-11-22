@@ -32,7 +32,7 @@ export const Dashboard = () => {
   const ActiveComponent = sections[activeSection as keyof typeof sections] || Home;
 
   return (
-    <div className="min-h-screen flex">
+    <div className="oneui-container">
       <Sidebar
         activeSection={activeSection}
         onSectionChange={setActiveSection}
@@ -40,21 +40,15 @@ export const Dashboard = () => {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="oneui-main">
         <Header
           onMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           isMobileMenuOpen={isMobileMenuOpen}
         />
 
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="oneui-content">
           <ActiveComponent />
         </main>
-
-        <footer className="p-4 text-center">
-          <p className="footer-text text-sm">
-            SwiftDevBot — created by <span className="font-semibold">SoverX</span>
-          </p>
-        </footer>
       </div>
     </div>
   );

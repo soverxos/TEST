@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { GlassCard } from '../ui/GlassCard';
-import { GlassInput } from '../ui/GlassInput';
-import { GlassButton } from '../ui/GlassButton';
-import { Sliders, Database, Key, Globe } from 'lucide-react';
+import { useI18n } from '../../contexts/I18nContext';
+import { Sliders, Database, Key, Globe, Save, CheckCircle2 } from 'lucide-react';
 
 export const Config = () => {
+  const { t } = useI18n();
   const [config, setConfig] = useState({
     botToken: '••••••••••••••••••••',
     apiUrl: 'https://api.telegram.org',
@@ -21,92 +20,175 @@ export const Config = () => {
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const configSections = [
-    {
-      icon: Key,
-      title: 'Authentication',
-      fields: [
-        { key: 'botToken', label: 'Bot Token', type: 'password' },
-      ],
-    },
-    {
-      icon: Globe,
-      title: 'API Configuration',
-      fields: [
-        { key: 'apiUrl', label: 'API URL', type: 'text' },
-        { key: 'webhookUrl', label: 'Webhook URL', type: 'text' },
-      ],
-    },
-    {
-      icon: Sliders,
-      title: 'Performance',
-      fields: [
-        { key: 'maxRetries', label: 'Max Retries', type: 'number' },
-        { key: 'timeout', label: 'Timeout (seconds)', type: 'number' },
-      ],
-    },
-  ];
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-glass-text mb-2">Core Configuration</h2>
-        <p className="text-glass-text-secondary">Manage bot's core settings and parameters</p>
+    <div>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--oneui-text)' }}>
+          Core Configuration
+        </h1>
+        <p className="oneui-text-muted">Manage bot's core settings and parameters</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {[
-          { icon: Database, label: 'Database', value: 'Connected', color: 'text-green-400' },
-          { icon: Key, label: 'API Status', value: 'Active', color: 'text-cyan-400' },
-          { icon: Globe, label: 'Webhook', value: 'Running', color: 'text-purple-400' },
+          { icon: Database, label: 'Database', value: 'Connected', color: 'oneui-text-success' },
+          { icon: Key, label: 'API Status', value: 'Active', color: 'oneui-text-primary' },
+          { icon: Globe, label: 'Webhook', value: 'Running', color: 'oneui-text-primary' },
         ].map((status) => {
           const Icon = status.icon;
           return (
-            <GlassCard key={status.label} hover className="p-6">
+            <div key={status.label} className="oneui-card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-glass-text-secondary text-sm mb-1">{status.label}</p>
+                  <p className="text-sm oneui-text-muted mb-1">{status.label}</p>
                   <p className={`text-xl font-bold ${status.color}`}>{status.value}</p>
                 </div>
-                <Icon className={`w-8 h-8 ${status.color}`} />
+                <div className={`oneui-stat-icon ${status.color.includes('success') ? 'oneui-stat-icon-success' : 'oneui-stat-icon-primary'}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
               </div>
-            </GlassCard>
+            </div>
           );
         })}
       </div>
 
+      {/* Configuration Form */}
       <form onSubmit={handleSave} className="space-y-6">
-        {configSections.map((section) => {
-          const Icon = section.icon;
-          return (
-            <GlassCard key={section.title} className="p-6" glow>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 rounded-lg bg-cyan-500/20">
-                  <Icon className="w-5 h-5 text-cyan-400" />
-                </div>
-                <h3 className="text-xl font-bold text-glass-text">{section.title}</h3>
+        {/* Authentication */}
+        <div className="oneui-card">
+          <div className="oneui-card-header">
+            <div className="flex items-center gap-3">
+              <div className="oneui-stat-icon oneui-stat-icon-primary">
+                <Key className="w-5 h-5" />
               </div>
-              <div className="space-y-4">
-                {section.fields.map((field) => (
-                  <GlassInput
-                    key={field.key}
-                    label={field.label}
-                    type={field.type}
-                    value={config[field.key as keyof typeof config]}
-                    onChange={(e) => setConfig({ ...config, [field.key]: e.target.value })}
-                  />
-                ))}
-              </div>
-            </GlassCard>
-          );
-        })}
+              <h3 className="oneui-card-title">Authentication</h3>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--oneui-text)' }}>
+                Bot Token
+              </label>
+              <input
+                type="password"
+                value={config.botToken}
+                onChange={(e) => setConfig({ ...config, botToken: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  backgroundColor: 'var(--oneui-bg-alt)',
+                  borderColor: 'var(--oneui-border)',
+                  color: 'var(--oneui-text)',
+                }}
+              />
+            </div>
+          </div>
+        </div>
 
+        {/* API Configuration */}
+        <div className="oneui-card">
+          <div className="oneui-card-header">
+            <div className="flex items-center gap-3">
+              <div className="oneui-stat-icon oneui-stat-icon-primary">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h3 className="oneui-card-title">API Configuration</h3>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--oneui-text)' }}>
+                API URL
+              </label>
+              <input
+                type="text"
+                value={config.apiUrl}
+                onChange={(e) => setConfig({ ...config, apiUrl: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  backgroundColor: 'var(--oneui-bg-alt)',
+                  borderColor: 'var(--oneui-border)',
+                  color: 'var(--oneui-text)',
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--oneui-text)' }}>
+                Webhook URL
+              </label>
+              <input
+                type="text"
+                value={config.webhookUrl}
+                onChange={(e) => setConfig({ ...config, webhookUrl: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  backgroundColor: 'var(--oneui-bg-alt)',
+                  borderColor: 'var(--oneui-border)',
+                  color: 'var(--oneui-text)',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Performance */}
+        <div className="oneui-card">
+          <div className="oneui-card-header">
+            <div className="flex items-center gap-3">
+              <div className="oneui-stat-icon oneui-stat-icon-warning">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <h3 className="oneui-card-title">Performance</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--oneui-text)' }}>
+                Max Retries
+              </label>
+              <input
+                type="number"
+                value={config.maxRetries}
+                onChange={(e) => setConfig({ ...config, maxRetries: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  backgroundColor: 'var(--oneui-bg-alt)',
+                  borderColor: 'var(--oneui-border)',
+                  color: 'var(--oneui-text)',
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--oneui-text)' }}>
+                Timeout (seconds)
+              </label>
+              <input
+                type="number"
+                value={config.timeout}
+                onChange={(e) => setConfig({ ...config, timeout: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  backgroundColor: 'var(--oneui-bg-alt)',
+                  borderColor: 'var(--oneui-border)',
+                  color: 'var(--oneui-text)',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Save Button */}
         <div className="flex items-center gap-3">
-          <GlassButton type="submit" variant="primary" size="lg">
+          <button type="submit" className="oneui-btn oneui-btn-primary flex items-center gap-2">
+            <Save className="w-4 h-4" />
             Save Configuration
-          </GlassButton>
+          </button>
           {saved && (
-            <span className="text-green-400 text-sm font-medium">Configuration saved!</span>
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-sm font-medium">Configuration saved!</span>
+            </div>
           )}
         </div>
       </form>

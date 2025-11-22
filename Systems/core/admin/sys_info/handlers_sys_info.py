@@ -14,7 +14,7 @@ from loguru import logger
 from sqlalchemy import select, func as sql_func 
 from aiogram.exceptions import TelegramBadRequest
 
-from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS
+from Systems.core.admin.keyboards_admin_common import ADMIN_COMMON_TEXTS, get_admin_texts
 from .keyboards_sys_info import get_sys_info_keyboard
 from Systems.core.ui.callback_data_factories import AdminSysInfoPanelNavigate
 from Systems.core.admin.filters_admin import can_view_admin_panel_filter 
@@ -171,7 +171,8 @@ async def cq_admin_show_system_info_entry(
         text_parts.append(f"  ▸ Путь: {hcode(s.db.sqlite_path)}")
     
     # Кэш
-    text_parts.append(f"\n💾 {hbold('Кэш')} ───")  # TODO: добавить в переводы
+    cache_label = admin_texts.get("admin_cache_section", "💾 Кэш")
+    text_parts.append(f"\n{hbold(cache_label)} ───")
     text_parts.append(f"  ▸ Тип: {hbold(s.cache.type.capitalize())}")
     if s.cache.type == "redis" and s.cache.redis_url:
         text_parts.append(f"  ▸ URL: {hcode(str(s.cache.redis_url))}") 
@@ -182,10 +183,18 @@ async def cq_admin_show_system_info_entry(
         total_modules = len(services_provider.modules.get_all_modules_info())
         loaded_modules = len(services_provider.modules.get_loaded_modules_info(True, True))
         enabled_plugins = len(services_provider.modules.enabled_plugin_names)
-        text_parts.append(f"\n🧩 {hbold('Модули')} ───")
-        text_parts.append(f"  ▸ Всего найдено: {hbold(str(total_modules))}")
-        text_parts.append(f"  ▸ Активных плагинов: {hbold(str(enabled_plugins))}")
-        text_parts.append(f"  ▸ Успешно загружено: {hbold(str(loaded_modules))}")
+
+        modules_label = admin_texts.get("admin_sys_info_modules", "🧩 Модули")
+        text_parts.append(f"\n{hbold(modules_label)} ───")
+        text_parts.append(
+            f"  ▸ {admin_texts.get('admin_sys_info_total_modules', 'Всего найдено')}: {hbold(str(total_modules))}"
+        )
+        text_parts.append(
+            f"  ▸ {admin_texts.get('admin_sys_info_enabled_modules', 'Активных плагинов')}: {hbold(str(enabled_plugins))}"
+        )
+        text_parts.append(
+            f"  ▸ {admin_texts.get('admin_sys_info_loaded_modules', 'Успешно загружено')}: {hbold(str(loaded_modules))}"
+        )
     except Exception as e_mod_info:
         logger.warning(f"Не удалось получить информацию о модулях: {e_mod_info}")
         text_parts.append(f"\n🧩 {hbold('Модули')} ───")
@@ -194,8 +203,9 @@ async def cq_admin_show_system_info_entry(
     # Пользователи
     total_users_count = await _get_local_total_users_count(services_provider)
     total_users_str = hbold(str(total_users_count)) if total_users_count is not None else f"{hcode('[Ошибка]')}"
-    text_parts.append(f"\n👥 {hbold('Пользователи')} ───")
-    text_parts.append(f"  ▸ Всего в БД: {total_users_str}")
+    users_label = admin_texts.get("admin_sys_info_users", "👥 Пользователи")
+    text_parts.append(f"\n{hbold(users_label)} ───")
+    text_parts.append(f"  ▸ {admin_texts.get('admin_sys_info_total_users', 'Всего пользователей')}: {total_users_str}")
 
     text_response = "\n".join(text_parts)
     keyboard_sysinfo = get_sys_info_keyboard()

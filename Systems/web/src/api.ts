@@ -1,6 +1,18 @@
-export interface User {
+export interface BotUser {
+    id: number;
     username: string;
     role: string;
+    avatar?: string;
+    is_blocked: boolean;
+}
+
+export interface BotModule {
+    name: string;
+    status: 'active' | 'inactive';
+    description?: string;
+    display_name?: string;
+    is_system_module?: boolean;
+    version?: string | null;
 }
 
 export interface Profile {
@@ -64,5 +76,44 @@ export const api = {
 
     logout: async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
+    }
+,
+
+    getUsers: async (): Promise<BotUser[]> => {
+        const response = await fetch('/api/users');
+        if (!response.ok) throw new Error('Failed to load users');
+        return response.json();
+    },
+
+    toggleUserBlockStatus: async (userId: number, block: boolean) => {
+        const response = await fetch(`/api/users/${userId}/block`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ block }),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Toggle failed' }));
+            throw new Error(error.detail || 'Toggle failed');
+        }
+        return response.json();
+    },
+
+    getModules: async (): Promise<BotModule[]> => {
+        const response = await fetch('/api/modules');
+        if (!response.ok) throw new Error('Failed to load modules');
+        return response.json();
+    },
+
+    toggleModuleStatus: async (moduleName: string, enable: boolean) => {
+        const response = await fetch(`/api/modules/${moduleName}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enable }),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Toggle failed' }));
+            throw new Error(error.detail || 'Toggle failed');
+        }
+        return response.json();
     }
 };

@@ -1,0 +1,97 @@
+{
+  "common": {
+    "welcome": "Welcome to SwiftDevBot",
+    "controlCenter": "Control Center",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "refresh": "Refresh",
+    "actions": "Actions",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "online": "Online",
+    "offline": "Offline",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "header": {
+    "signOut": "Sign Out",
+    "switchTheme": "Switch theme"
+  },
+  "sidebar": {
+    "home": "Home",
+    "modules": "Modules",
+    "users": "Users",
+    "statistics": "Statistics",
+    "logs": "Logs",
+    "settings": "Settings",
+    "documentation": "Documentation",
+    "adminPanel": "Administration",
+    "coreConfig": "Core Config",
+    "services": "Services",
+    "monitoring": "Monitoring"
+  },
+  "home": {
+    "title": "Welcome to SwiftDevBot",
+    "subtitle": "Monitor and control your bot's operations in real-time",
+    "activeModules": "Active Modules",
+    "totalUsers": "Total Users",
+    "todayInteractions": "Today Interactions",
+    "systemStatus": "System Status",
+    "recentActivity": "Recent Activity",
+    "systemHealth": "System Health",
+    "cpuUsage": "CPU Usage",
+    "memory": "Memory",
+    "network": "Network",
+    "storage": "Storage"
+  },
+  "modules": {
+    "title": "Bot Modules",
+    "subtitle": "Manage your bot's functionality modules",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "noModules": "No modules found",
+    "noModulesDesc": "Modules will appear here once they are installed",
+    "moduleActivated": "Module {name} activated",
+    "moduleDeactivated": "Module {name} deactivated",
+    "errorToggle": "Failed to toggle module status"
+  },
+  "users": {
+    "title": "Bot Users",
+    "subtitle": "Manage users interacting with your bot",
+    "blockUser": "Block User",
+    "unblockUser": "Unblock User",
+    "noUsers": "No users yet",
+    "noUsersDesc": "Users will appear here once they interact with your bot",
+    "userId": "User ID",
+    "role": "Role",
+    "userBlocked": "User {id} blocked",
+    "userUnblocked": "User {id} unblocked",
+    "errorToggle": "Failed to change block status"
+  },
+  "auth": {
+    "loginRequired": "Login required",
+    "loginViaTelegram": "To access the panel, use the /login command in the Telegram bot",
+    "loginLink": "You will receive a link to access the web panel",
+    "invalidToken": "Invalid or expired token",
+    "sessionExpired": "Session expired. Please log in again."
+  },
+  "errors": {
+    "loadError": "Failed to load data",
+    "saveError": "Failed to save changes",
+    "networkError": "Network error. Please check your connection.",
+    "unknownError": "An unknown error occurred"
+  }
+}
+

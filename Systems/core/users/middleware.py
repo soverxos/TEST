@@ -64,7 +64,7 @@ class UserStatusMiddleware(BaseMiddleware):
         if event.callback_query and event.callback_query.data:
             try:
                 callback_data = CoreServiceAction.unpack(event.callback_query.data)
-            except ValueError:
+            except (ValueError, TypeError):
                 callback_data = None
         is_confirm_registration_callback = callback_data is not None and callback_data.action == "confirm_registration"
         is_cancel_registration_callback = callback_data is not None and callback_data.action == "cancel_registration"
