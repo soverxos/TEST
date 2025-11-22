@@ -23,7 +23,9 @@
     "online": "Online",
     "offline": "Offline",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "never": "Never",
+    "saving": "Saving..."
   },
   "header": {
     "signOut": "Sign Out",
@@ -31,7 +33,10 @@
   },
   "sidebar": {
     "home": "Home",
+    "userMenu": "User",
+    "missionControl": "Mission Control",
     "modules": "Modules",
+    "modulesHub": "My Modules",
     "users": "Users",
     "statistics": "Statistics",
     "logs": "Logs",
@@ -39,12 +44,193 @@
     "documentation": "Documentation",
     "adminPanel": "Administration",
     "coreConfig": "Core Config",
+    "coreManagement": "Core Management",
     "services": "Services",
-    "monitoring": "Monitoring"
+    "monitoring": "Monitoring",
+    "notifications": "Notifications",
+    "data": "My Data",
+    "developer": "API Keys",
+    "terminal": "Terminal",
+    "security": "Security",
+    "support": "Support",
+    "cronJobs": "Scheduler",
+    "securityOperations": "SOC",
+    "databaseData": "Database",
+    "broadcastStudio": "Broadcasts"
   },
   "home": {
     "title": "Welcome to SwiftDevBot",
     "subtitle": "Monitor and control your bot's operations in real-time",
+    "customize": "Customize",
+    "addWidgets": "Add Widgets",
+    "noWidgets": "No active widgets. Add widgets to display information.",
+    "widgetSettings": "Widget Settings",
+    "widgetSettingsDesc": "Select widgets to display on the home page",
+    "widget": {
+      "stats": {
+        "desc": "Displays bot statistics (modules, users, interactions)"
+      },
+      "activity": {
+        "desc": "Shows recent activity in the system"
+      },
+      "systemHealth": {
+        "desc": "Displays system health (CPU, memory, network, storage)"
+      },
+      "quickActions": {
+        "desc": "Quick access to main dashboard sections"
+      },
+      "recentErrors": {
+        "desc": "Recent errors from system logs"
+      },
+      "topModules": {
+        "desc": "Top 5 active modules"
+      },
+      "userStats": {
+        "desc": "User statistics (total, new, active)"
+      },
+      "servicesStatus": {
+        "desc": "System services status"
+      },
+      "performance": {
+        "desc": "Performance metrics (RPS, response time, errors)"
+      },
+      "announcements": {
+        "desc": "System announcements and notifications"
+      },
+      "uptime": {
+        "desc": "System uptime without restart"
+      },
+      "weather": {
+        "desc": "Current weather and forecast"
+      },
+      "calendar": {
+        "desc": "Calendar with events"
+      },
+      "notes": {
+        "desc": "Quick notes"
+      },
+      "tasks": {
+        "desc": "Task list and todos"
+      },
+      "time": {
+        "desc": "Clock in different time zones"
+      },
+      "github": {
+        "desc": "GitHub repositories"
+      },
+      "tools": {
+        "desc": "Useful tools (calculator, converter, encoder)"
+      }
+    },
+    "quickActions": {
+      "myModules": "My Modules",
+      "myData": "My Data",
+      "apiKeys": "API Keys",
+      "security": "Security",
+      "statistics": "Statistics",
+      "notifications": "Notifications",
+      "settings": "Settings",
+      "support": "Support"
+    },
+    "noErrors": "No recent errors",
+    "noModules": "No modules available",
+    "noServices": "No services available",
+    "noAnnouncements": "No announcements",
+    "userStats": {
+      "totalUsers": "Total Users",
+      "newToday": "New Today",
+      "active24h": "Active (24h)",
+      "growth": "Growth"
+    },
+    "performance": {
+      "rps": "RPS",
+      "responseTime": "Response Time",
+      "errorRate": "Error Rate",
+      "queueSize": "Queue Size"
+    },
+    "uptime": {
+      "days": "Days",
+      "hours": "Hours",
+      "minutes": "Minutes"
+    },
+    "announcements": {
+      "maintenance": "Scheduled Maintenance",
+      "maintenanceDesc": "System maintenance scheduled for tomorrow at 2:00 AM",
+      "update": "System Update",
+      "updateDesc": "New features have been added to the dashboard"
+    },
+    "weather": {
+      "error": "Failed to load weather",
+      "noData": "No weather data",
+      "humidity": "Humidity",
+      "wind": "Wind",
+      "feelsLike": "Feels like"
+    },
+    "calendar": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December",
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "upcoming": "Upcoming Events"
+    },
+    "notes": {
+      "placeholder": "Add a note...",
+      "noNotes": "No notes yet. Add your first note!"
+    },
+    "tasks": {
+      "placeholder": "Add a task...",
+      "all": "All",
+      "active": "Active",
+      "completed": "Completed",
+      "noTasks": "No tasks yet. Add your first task!",
+      "noFilteredTasks": "No tasks found",
+      "completed": "completed",
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    },
+    "time": {
+      "otherZones": "Other Time Zones"
+    },
+    "github": {
+      "title": "GitHub Repositories",
+      "usernamePlaceholder": "GitHub username",
+      "load": "Load Repositories",
+      "error": "Failed to load repositories",
+      "noRepos": "No repositories found",
+      "change": "Change",
+      "changeUser": "Change username"
+    },
+    "tools": {
+      "calculator": "Calculator",
+      "converter": "Converter",
+      "encoder": "Encoder",
+      "formatter": "Formatter",
+      "calculate": "Calculate",
+      "result": "Result",
+      "input": "Input",
+      "output": "Output",
+      "encode": "Encode",
+      "decode": "Decode",
+      "formatterComingSoon": "Formatter coming soon"
+    },
     "activeModules": "Active Modules",
     "totalUsers": "Total Users",
     "todayInteractions": "Today Interactions",
@@ -55,6 +241,18 @@
     "memory": "Memory",
     "network": "Network",
     "storage": "Storage"
+  },
+  "statistics": {
+    "title": "Statistics",
+    "subtitle": "Real-time analytics and metrics",
+    "messagesToday": "Messages Today",
+    "totalUsers": "Total Users",
+    "activeModules": "Active Modules",
+    "totalModules": "Total Modules",
+    "vsPrevious": "vs previous",
+    "activityChart": "Activity Chart",
+    "hourlyActivity": "Hourly Activity",
+    "trends": "Trends"
   },
   "modules": {
     "title": "Bot Modules",
@@ -92,6 +290,283 @@
     "saveError": "Failed to save changes",
     "networkError": "Network error. Please check your connection.",
     "unknownError": "An unknown error occurred"
+  },
+  "userDashboard": {
+    "welcome": "Welcome, {name}!",
+    "subtitle": "Control center for your bot interaction",
+    "accountActive": "Active",
+    "quickActions": "Quick Actions",
+    "myModules": "My Modules",
+    "myData": "My Data",
+    "apiKeys": "API Keys",
+    "security": "Security",
+    "activeModules": "Active Modules",
+    "totalCommands": "Commands Today",
+    "storageUsed": "Storage Used",
+    "recentActivity": "Recent Activity",
+    "announcements": "Announcements",
+    "announcement": {
+      "newFeatures": "New Features",
+      "newFeaturesDesc": "New features have been added to improve your experience"
+    },
+    "activity": {
+      "command": "Command executed",
+      "fileUpload": "File uploaded",
+      "settings": "Settings changed",
+      "settingsChanged": "Profile settings"
+    }
+  },
+  "modulesHub": {
+    "title": "My Modules",
+    "subtitle": "Manage available services",
+    "active": "Active",
+    "notConfigured": "Not Configured",
+    "requiresSubscription": "Requires Subscription",
+    "open": "Open",
+    "configure": "Configure",
+    "noModules": "No modules found",
+    "noModulesDesc": "You don't have any modules installed yet. Modules can be installed via CLI command 'sdb module create' or manually added to the Modules/ folder."
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "Manage account security",
+    "cloudPassword": "Cloud Password",
+    "changePassword": "Change Password",
+    "activeSessions": "Active Sessions",
+    "sessionHistory": "Access History",
+    "terminateAll": "Terminate All Sessions",
+    "terminateSession": "Terminate Session",
+    "device": "Device",
+    "location": "Location",
+    "lastActivity": "Last Activity",
+    "currentSession": "Current Session",
+    "noSessions": "No active sessions",
+    "confirmTerminateAll": "Terminate all sessions except current?",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordChanged": "Password changed successfully"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Manage notifications",
+    "channels": "Delivery Channels",
+    "telegram": "Telegram",
+    "email": "Email",
+    "push": "Browser Push",
+    "types": "Notification Types",
+    "news": "News",
+    "security": "Security",
+    "tasks": "Task Completion",
+    "marketing": "Marketing",
+    "doNotDisturb": "Do Not Disturb",
+    "schedule": "Schedule"
+  },
+  "data": {
+    "title": "My Data",
+    "subtitle": "Manage your data",
+    "commandHistory": "Command History",
+    "uploadedFiles": "Uploaded Files",
+    "exportData": "Export Data",
+    "downloadArchive": "Download Archive",
+    "privacy": "Privacy",
+    "clearHistory": "Clear History",
+    "deleteAccount": "Delete Account",
+    "command": "Command",
+    "date": "Date",
+    "status": "Status",
+    "fileName": "File Name",
+    "size": "Size",
+    "uploadDate": "Upload Date",
+    "download": "Download",
+    "delete": "Delete",
+    "noCommandHistory": "Command history is empty",
+    "noFiles": "No uploaded files"
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "Get help and support",
+    "createTicket": "Create Ticket",
+    "myTickets": "My Tickets",
+    "faq": "Frequently Asked Questions",
+    "subject": "Subject",
+    "message": "Message",
+    "submit": "Submit",
+    "ticketId": "Ticket ID",
+    "status": "Status",
+    "created": "Created",
+    "updated": "Updated",
+    "open": "Open",
+    "closed": "Closed",
+    "pending": "Pending",
+    "noTickets": "No tickets created",
+    "ticketCreated": "Ticket created successfully"
+  },
+  "developer": {
+    "title": "API Keys",
+    "subtitle": "Manage personal access tokens",
+    "generateToken": "Generate Token",
+    "myTokens": "My Tokens",
+    "tokenName": "Name",
+    "created": "Created",
+    "lastUsed": "Last Used",
+    "actions": "Actions",
+    "copy": "Copy",
+    "revoke": "Revoke",
+    "tokenValue": "Token Value",
+    "warning": "Warning: token will be shown only once!",
+    "apiDocs": "API Documentation",
+    "openDocs": "Open Swagger",
+    "noTokens": "No tokens created",
+    "confirmRevoke": "Revoke this token?",
+    "copyToken": "Copy token",
+    "revokeToken": "Revoke token"
+  },
+  "terminal": {
+    "title": "Command Console",
+    "subtitle": "Execute bot commands directly in browser",
+    "placeholder": "Enter command (e.g., /start, /help)...",
+    "execute": "Execute",
+    "clear": "Clear",
+    "history": "Command History",
+    "noHistory": "Command history is empty"
+  },
+  "cronJobs": {
+    "title": "Scheduled Jobs",
+    "subtitle": "View and manage scheduled tasks (APScheduler)",
+    "scheduledJobs": "Scheduled Jobs",
+    "jobName": "Job Name",
+    "function": "Function",
+    "trigger": "Trigger",
+    "nextRun": "Next Run",
+    "noJobs": "No scheduled jobs",
+    "noJobsDesc": "No cron jobs are currently scheduled.",
+    "never": "Never"
+  },
+  "soc": {
+    "title": "Security Operations Center",
+    "subtitle": "Monitor and manage security events, access control, and threats",
+    "auditLogs": "Audit Logs",
+    "accessControl": "Access Control",
+    "statistics": "Statistics",
+    "filters": "Filters",
+    "moduleName": "Module Name",
+    "filterByModule": "Filter by module...",
+    "eventType": "Event Type",
+    "severity": "Severity",
+    "allTypes": "All Types",
+    "allSeverities": "All Severities",
+    "timestamp": "Timestamp",
+    "module": "Module",
+    "user": "User",
+    "ip": "IP Address",
+    "status": "Status",
+    "noLogs": "No audit logs found",
+    "noLogsDesc": "No security events match your filters.",
+    "apiKeys": "API Keys",
+    "noApiKeys": "No API keys",
+    "noApiKeysDesc": "No API keys are configured. Use CLI to create keys.",
+    "keyName": "Key Name",
+    "permissions": "Permissions",
+    "created": "Created",
+    "expires": "Expires",
+    "lastUsed": "Last Used",
+    "usageCount": "Usage Count",
+    "totalEvents": "Total Events",
+    "violations": "Violations",
+    "eventTypes": "Event Types",
+    "modules": "Modules",
+    "eventsByType": "Events by Type",
+    "eventsBySeverity": "Events by Severity",
+    "count": "Count",
+    "noStats": "No statistics available"
+  },
+  "database": {
+    "title": "Database & Data",
+    "subtitle": "SQL Runner, Migrations, and Cache Management",
+    "sqlRunner": "SQL Runner",
+    "migrations": "Migrations",
+    "cache": "Cache",
+    "cacheExplorer": "Cache Explorer",
+    "query": "SQL Query (SELECT only)",
+    "sqlNote": "Only SELECT queries are allowed for security.",
+    "execute": "Execute",
+    "results": "Results",
+    "rows": "rows",
+    "revision": "Revision",
+    "description": "Description",
+    "status": "Status",
+    "current": "Current",
+    "pending": "Pending",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "confirmMigration": "Execute migration?",
+    "noMigrations": "No migrations found",
+    "searchPattern": "Search pattern (e.g., user:* or *)...",
+    "search": "Search",
+    "key": "Key",
+    "ttl": "TTL",
+    "noExpiry": "No expiry",
+    "noCacheKeys": "No cache keys found",
+    "noCacheKeysDesc": "No keys match your search pattern.",
+    "flushCache": "Flush Cache",
+    "confirmFlushCache": "Flush all cache? This action cannot be undone.",
+    "cacheFlushed": "Cache flushed successfully"
+  },
+  "broadcast": {
+    "title": "Broadcast Studio",
+    "subtitle": "Create and send messages to users",
+    "create": "Create Broadcast",
+    "history": "History",
+    "messageEditor": "Message Editor",
+    "message": "Message",
+    "messagePlaceholder": "Enter your message here...",
+    "messageNote": "Supports Markdown formatting. Use /help for formatting guide.",
+    "targeting": "Targeting",
+    "targetType": "Target Type",
+    "targetAll": "All Users",
+    "targetAdmins": "Administrators Only",
+    "targetRole": "By Role",
+    "targetActive": "Active Users (Last N days)",
+    "targetInactive": "Inactive Users (No activity for N days)",
+    "targetNewUsers": "New Users (Registered in last N days)",
+    "targetLanguage": "By Language",
+    "targetActiveStatus": "By Active Status",
+    "days": "Days",
+    "language": "Language Code",
+    "selectLanguage": "Select Language",
+    "role": "Role",
+    "selectRole": "Select Role",
+    "roleUser": "User",
+    "roleModerator": "Moderator",
+    "roleAdmin": "Admin",
+    "roleSuperAdmin": "Super Admin",
+    "activeStatus": "Active Status",
+    "selectActiveStatus": "Select Status",
+    "statusActive": "Active Users",
+    "statusInactive": "Inactive Users",
+    "activeDaysNote": "Users who were active in the last N days",
+    "inactiveDaysNote": "Users who have not been active for N days",
+    "newUsersDaysNote": "Users registered in the last N days",
+    "roleRequired": "Role is required",
+    "activeStatusRequired": "Active status is required",
+    "scheduling": "Scheduling",
+    "sendTime": "Send Time",
+    "scheduleNote": "Leave empty to send immediately",
+    "send": "Send Broadcast",
+    "progress": "Broadcast Progress",
+    "sent": "Sent",
+    "errors": "Errors",
+    "id": "ID",
+    "target": "Target",
+    "recipients": "Recipients",
+    "status": "Status",
+    "created": "Created",
+    "noBroadcasts": "No broadcasts",
+    "noBroadcastsDesc": "No broadcasts have been sent yet.",
+    "broadcastCreated": "Broadcast created successfully",
+    "messageRequired": "Message is required",
+    "daysRequired": "Number of days is required for active users filter",
+    "languageRequired": "Language code is required"
   }
 }
 

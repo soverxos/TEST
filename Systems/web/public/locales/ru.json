@@ -23,7 +23,9 @@
     "online": "Онлайн",
     "offline": "Офлайн",
     "yes": "Да",
-    "no": "Нет"
+    "no": "Нет",
+    "never": "Никогда",
+    "saving": "Сохранение..."
   },
   "header": {
     "signOut": "Выйти",
@@ -31,7 +33,10 @@
   },
   "sidebar": {
     "home": "Главная",
+    "userMenu": "Пользователь",
+    "missionControl": "Mission Control",
     "modules": "Модули",
+    "modulesHub": "Мои модули",
     "users": "Пользователи",
     "statistics": "Статистика",
     "logs": "Логи",
@@ -39,12 +44,193 @@
     "documentation": "Документация",
     "adminPanel": "Администрирование",
     "coreConfig": "Конфигурация ядра",
+    "coreManagement": "Core Management",
     "services": "Сервисы",
-    "monitoring": "Мониторинг"
+    "monitoring": "Мониторинг",
+    "notifications": "Уведомления",
+    "data": "Мои данные",
+    "developer": "API Ключи",
+    "terminal": "Консоль",
+    "security": "Безопасность",
+    "support": "Поддержка",
+    "cronJobs": "Планировщик",
+    "securityOperations": "SOC",
+    "databaseData": "База данных",
+    "broadcastStudio": "Рассылки"
   },
   "home": {
     "title": "Добро пожаловать в SwiftDevBot",
     "subtitle": "Мониторинг и управление операциями вашего бота в реальном времени",
+    "customize": "Настроить",
+    "addWidgets": "Добавить виджеты",
+    "noWidgets": "Нет активных виджетов. Добавьте виджеты для отображения информации.",
+    "widgetSettings": "Настройка виджетов",
+    "widgetSettingsDesc": "Выберите виджеты для отображения на главной странице",
+    "widget": {
+      "stats": {
+        "desc": "Отображает статистику бота (модули, пользователи, взаимодействия)"
+      },
+      "activity": {
+        "desc": "Показывает последнюю активность в системе"
+      },
+      "systemHealth": {
+        "desc": "Отображает состояние системы (CPU, память, сеть, хранилище)"
+      },
+      "quickActions": {
+        "desc": "Быстрый доступ к основным разделам панели"
+      },
+      "recentErrors": {
+        "desc": "Последние ошибки из логов системы"
+      },
+      "topModules": {
+        "desc": "Топ-5 активных модулей"
+      },
+      "userStats": {
+        "desc": "Статистика пользователей (всего, новых, активных)"
+      },
+      "servicesStatus": {
+        "desc": "Статус системных сервисов"
+      },
+      "performance": {
+        "desc": "Метрики производительности (RPS, время ответа, ошибки)"
+      },
+      "announcements": {
+        "desc": "Системные объявления и уведомления"
+      },
+      "uptime": {
+        "desc": "Время работы системы без перезагрузки"
+      },
+      "weather": {
+        "desc": "Текущая погода и прогноз"
+      },
+      "calendar": {
+        "desc": "Календарь с событиями"
+      },
+      "notes": {
+        "desc": "Быстрые заметки"
+      },
+      "tasks": {
+        "desc": "Список задач и дел"
+      },
+      "time": {
+        "desc": "Часы в разных часовых поясах"
+      },
+      "github": {
+        "desc": "Репозитории GitHub"
+      },
+      "tools": {
+        "desc": "Полезные инструменты (калькулятор, конвертер, кодировщик)"
+      }
+    },
+    "quickActions": {
+      "myModules": "Мои модули",
+      "myData": "Мои данные",
+      "apiKeys": "API Ключи",
+      "security": "Безопасность",
+      "statistics": "Статистика",
+      "notifications": "Уведомления",
+      "settings": "Настройки",
+      "support": "Поддержка"
+    },
+    "noErrors": "Нет последних ошибок",
+    "noModules": "Нет доступных модулей",
+    "noServices": "Нет доступных сервисов",
+    "noAnnouncements": "Нет объявлений",
+    "userStats": {
+      "totalUsers": "Всего пользователей",
+      "newToday": "Новых сегодня",
+      "active24h": "Активных (24ч)",
+      "growth": "Рост"
+    },
+    "performance": {
+      "rps": "RPS",
+      "responseTime": "Время ответа",
+      "errorRate": "Ошибки",
+      "queueSize": "Очередь"
+    },
+    "uptime": {
+      "days": "Дней",
+      "hours": "Часов",
+      "minutes": "Минут"
+    },
+    "announcements": {
+      "maintenance": "Плановое обслуживание",
+      "maintenanceDesc": "Плановое обслуживание системы запланировано на завтра в 2:00",
+      "update": "Обновление системы",
+      "updateDesc": "В панель управления добавлены новые функции"
+    },
+    "weather": {
+      "error": "Ошибка загрузки погоды",
+      "noData": "Нет данных о погоде",
+      "humidity": "Влажность",
+      "wind": "Ветер",
+      "feelsLike": "Ощущается"
+    },
+    "calendar": {
+      "january": "Январь",
+      "february": "Февраль",
+      "march": "Март",
+      "april": "Апрель",
+      "may": "Май",
+      "june": "Июнь",
+      "july": "Июль",
+      "august": "Август",
+      "september": "Сентябрь",
+      "october": "Октябрь",
+      "november": "Ноябрь",
+      "december": "Декабрь",
+      "sun": "Вс",
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "upcoming": "Предстоящие события"
+    },
+    "notes": {
+      "placeholder": "Добавить заметку...",
+      "noNotes": "Нет заметок. Добавьте первую заметку!"
+    },
+    "tasks": {
+      "placeholder": "Добавить задачу...",
+      "all": "Все",
+      "active": "Активные",
+      "completed": "Выполненные",
+      "noTasks": "Нет задач. Добавьте первую задачу!",
+      "noFilteredTasks": "Задачи не найдены",
+      "completed": "выполнено",
+      "priority": {
+        "low": "Низкий",
+        "medium": "Средний",
+        "high": "Высокий"
+      }
+    },
+    "time": {
+      "otherZones": "Другие часовые пояса"
+    },
+    "github": {
+      "title": "Репозитории GitHub",
+      "usernamePlaceholder": "Имя пользователя GitHub",
+      "load": "Загрузить репозитории",
+      "error": "Ошибка загрузки репозиториев",
+      "noRepos": "Репозитории не найдены",
+      "change": "Изменить",
+      "changeUser": "Изменить пользователя"
+    },
+    "tools": {
+      "calculator": "Калькулятор",
+      "converter": "Конвертер",
+      "encoder": "Кодировщик",
+      "formatter": "Форматтер",
+      "calculate": "Вычислить",
+      "result": "Результат",
+      "input": "Ввод",
+      "output": "Вывод",
+      "encode": "Кодировать",
+      "decode": "Декодировать",
+      "formatterComingSoon": "Форматтер скоро появится"
+    },
     "activeModules": "Активные модули",
     "totalUsers": "Всего пользователей",
     "todayInteractions": "Взаимодействий сегодня",
@@ -55,6 +241,18 @@
     "memory": "Память",
     "network": "Сеть",
     "storage": "Хранилище"
+  },
+  "statistics": {
+    "title": "Статистика",
+    "subtitle": "Аналитика и метрики в реальном времени",
+    "messagesToday": "Сообщений сегодня",
+    "totalUsers": "Всего пользователей",
+    "activeModules": "Активные модули",
+    "totalModules": "Всего модулей",
+    "vsPrevious": "к предыдущему",
+    "activityChart": "График активности",
+    "hourlyActivity": "Активность по часам",
+    "trends": "Тренды"
   },
   "modules": {
     "title": "Модули бота",
@@ -92,6 +290,283 @@
     "saveError": "Не удалось сохранить изменения",
     "networkError": "Ошибка сети. Пожалуйста, проверьте подключение.",
     "unknownError": "Произошла неизвестная ошибка"
+  },
+  "userDashboard": {
+    "welcome": "Добро пожаловать, {name}!",
+    "subtitle": "Центр управления вашим взаимодействием с ботом",
+    "accountActive": "Активен",
+    "quickActions": "Быстрые действия",
+    "myModules": "Мои модули",
+    "myData": "Мои данные",
+    "apiKeys": "API Ключи",
+    "security": "Безопасность",
+    "activeModules": "Активные модули",
+    "totalCommands": "Команд сегодня",
+    "storageUsed": "Использовано места",
+    "recentActivity": "Последняя активность",
+    "announcements": "Объявления",
+    "announcement": {
+      "newFeatures": "Новые возможности",
+      "newFeaturesDesc": "Добавлены новые функции для улучшения вашего опыта"
+    },
+    "activity": {
+      "command": "Выполнена команда",
+      "fileUpload": "Загружен файл",
+      "settings": "Изменены настройки",
+      "settingsChanged": "Настройки профиля"
+    }
+  },
+  "modulesHub": {
+    "title": "Мои модули",
+    "subtitle": "Управление доступными сервисами",
+    "active": "Активен",
+    "notConfigured": "Не настроен",
+    "requiresSubscription": "Требует подписки",
+    "open": "Открыть",
+    "configure": "Настроить",
+    "noModules": "Модули не найдены",
+    "noModulesDesc": "У вас пока нет установленных модулей. Модули можно установить через CLI команду 'sdb module create' или добавить вручную в папку Modules/."
+  },
+  "security": {
+    "title": "Безопасность",
+    "subtitle": "Управление безопасностью аккаунта",
+    "cloudPassword": "Облачный пароль",
+    "changePassword": "Изменить пароль",
+    "activeSessions": "Активные сессии",
+    "sessionHistory": "Журнал доступа",
+    "terminateAll": "Завершить все сеансы",
+    "terminateSession": "Завершить сеанс",
+    "device": "Устройство",
+    "location": "Местоположение",
+    "lastActivity": "Последняя активность",
+    "currentSession": "Текущая сессия",
+    "noSessions": "Нет активных сессий",
+    "confirmTerminateAll": "Завершить все сессии кроме текущей?",
+    "passwordsDoNotMatch": "Пароли не совпадают",
+    "passwordTooShort": "Пароль должен быть не менее 8 символов",
+    "passwordChanged": "Пароль успешно изменен"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "subtitle": "Управление уведомлениями",
+    "channels": "Каналы доставки",
+    "telegram": "Telegram",
+    "email": "Email",
+    "push": "Push в браузере",
+    "types": "Типы уведомлений",
+    "news": "Новости",
+    "security": "Безопасность",
+    "tasks": "Завершение задач",
+    "marketing": "Маркетинг",
+    "doNotDisturb": "Не беспокоить",
+    "schedule": "Расписание"
+  },
+  "data": {
+    "title": "Мои данные",
+    "subtitle": "Управление вашими данными",
+    "commandHistory": "История запросов",
+    "uploadedFiles": "Загруженные файлы",
+    "exportData": "Экспорт данных",
+    "downloadArchive": "Скачать архив",
+    "privacy": "Приватность",
+    "clearHistory": "Очистить историю",
+    "deleteAccount": "Удалить аккаунт",
+    "command": "Команда",
+    "date": "Дата",
+    "status": "Статус",
+    "fileName": "Имя файла",
+    "size": "Размер",
+    "uploadDate": "Дата загрузки",
+    "download": "Скачать",
+    "delete": "Удалить",
+    "noCommandHistory": "История команд пуста",
+    "noFiles": "Нет загруженных файлов"
+  },
+  "support": {
+    "title": "Поддержка",
+    "subtitle": "Получите помощь и поддержку",
+    "createTicket": "Создать тикет",
+    "myTickets": "Мои обращения",
+    "faq": "Часто задаваемые вопросы",
+    "subject": "Тема",
+    "message": "Сообщение",
+    "submit": "Отправить",
+    "ticketId": "ID тикета",
+    "status": "Статус",
+    "created": "Создан",
+    "updated": "Обновлен",
+    "open": "Открыт",
+    "closed": "Закрыт",
+    "pending": "В ожидании",
+    "noTickets": "Нет созданных тикетов",
+    "ticketCreated": "Тикет успешно создан"
+  },
+  "developer": {
+    "title": "API Ключи",
+    "subtitle": "Управление персональными токенами доступа",
+    "generateToken": "Создать токен",
+    "myTokens": "Мои токены",
+    "tokenName": "Название",
+    "created": "Создан",
+    "lastUsed": "Последнее использование",
+    "actions": "Действия",
+    "copy": "Копировать",
+    "revoke": "Отозвать",
+    "tokenValue": "Значение токена",
+    "warning": "Внимание: токен будет показан только один раз!",
+    "apiDocs": "Документация API",
+    "openDocs": "Открыть Swagger",
+    "noTokens": "Нет созданных токенов",
+    "confirmRevoke": "Отозвать этот токен?",
+    "copyToken": "Копировать токен",
+    "revokeToken": "Отозвать токен"
+  },
+  "terminal": {
+    "title": "Консоль команд",
+    "subtitle": "Выполняйте команды бота прямо в браузере",
+    "placeholder": "Введите команду (например, /start, /help)...",
+    "execute": "Выполнить",
+    "clear": "Очистить",
+    "history": "История команд",
+    "noHistory": "История команд пуста"
+  },
+  "cronJobs": {
+    "title": "Планировщик задач",
+    "subtitle": "Просмотр и управление запланированными задачами",
+    "scheduledJobs": "Запланированные задачи",
+    "jobName": "Название задачи",
+    "function": "Функция",
+    "trigger": "Триггер",
+    "nextRun": "Следующий запуск",
+    "noJobs": "Нет запланированных задач",
+    "noJobsDesc": "В данный момент нет запланированных задач.",
+    "never": "Никогда"
+  },
+  "soc": {
+    "title": "Security Operations Center",
+    "subtitle": "Мониторинг и управление событиями безопасности, контролем доступа и угрозами",
+    "auditLogs": "Журнал аудита",
+    "accessControl": "Контроль доступа",
+    "statistics": "Статистика",
+    "filters": "Фильтры",
+    "moduleName": "Название модуля",
+    "filterByModule": "Фильтр по модулю...",
+    "eventType": "Тип события",
+    "severity": "Уровень серьезности",
+    "allTypes": "Все типы",
+    "allSeverities": "Все уровни",
+    "timestamp": "Время",
+    "module": "Модуль",
+    "user": "Пользователь",
+    "ip": "IP адрес",
+    "status": "Статус",
+    "noLogs": "Журнал аудита пуст",
+    "noLogsDesc": "Нет событий безопасности, соответствующих вашим фильтрам.",
+    "apiKeys": "API Ключи",
+    "noApiKeys": "Нет API ключей",
+    "noApiKeysDesc": "API ключи не настроены. Используйте CLI для создания ключей.",
+    "keyName": "Название ключа",
+    "permissions": "Права",
+    "created": "Создан",
+    "expires": "Истекает",
+    "lastUsed": "Последнее использование",
+    "usageCount": "Количество использований",
+    "totalEvents": "Всего событий",
+    "violations": "Нарушения",
+    "eventTypes": "Типов событий",
+    "modules": "Модулей",
+    "eventsByType": "События по типам",
+    "eventsBySeverity": "События по серьезности",
+    "count": "Количество",
+    "noStats": "Статистика недоступна"
+  },
+  "database": {
+    "title": "База данных и данные",
+    "subtitle": "SQL Runner, Миграции и Управление кэшем",
+    "sqlRunner": "SQL Runner",
+    "migrations": "Миграции",
+    "cache": "Кэш",
+    "cacheExplorer": "Просмотр кэша",
+    "query": "SQL Запрос (только SELECT)",
+    "sqlNote": "Только SELECT запросы разрешены для безопасности.",
+    "execute": "Выполнить",
+    "results": "Результаты",
+    "rows": "строк",
+    "revision": "Ревизия",
+    "description": "Описание",
+    "status": "Статус",
+    "current": "Текущая",
+    "pending": "Ожидает",
+    "upgrade": "Обновить",
+    "downgrade": "Откатить",
+    "confirmMigration": "Выполнить миграцию?",
+    "noMigrations": "Миграции не найдены",
+    "searchPattern": "Паттерн поиска (например, user:* или *)...",
+    "search": "Поиск",
+    "key": "Ключ",
+    "ttl": "TTL",
+    "noExpiry": "Без срока",
+    "noCacheKeys": "Ключи кэша не найдены",
+    "noCacheKeysDesc": "Нет ключей, соответствующих вашему паттерну поиска.",
+    "flushCache": "Очистить кэш",
+    "confirmFlushCache": "Очистить весь кэш? Это действие нельзя отменить.",
+    "cacheFlushed": "Кэш успешно очищен"
+  },
+  "broadcast": {
+    "title": "Broadcast Studio",
+    "subtitle": "Создание и отправка сообщений пользователям",
+    "create": "Создать рассылку",
+    "history": "История",
+    "messageEditor": "Редактор сообщений",
+    "message": "Сообщение",
+    "messagePlaceholder": "Введите ваше сообщение здесь...",
+    "messageNote": "Поддерживается форматирование Markdown. Используйте /help для руководства по форматированию.",
+    "targeting": "Целевая аудитория",
+    "targetType": "Тип целевой аудитории",
+    "targetAll": "Все пользователи",
+    "targetAdmins": "Только администраторы",
+    "targetRole": "По роли",
+    "targetActive": "Активные пользователи (последние N дней)",
+    "targetInactive": "Неактивные пользователи (нет активности N дней)",
+    "targetNewUsers": "Новые пользователи (зарегистрированы за N дней)",
+    "targetLanguage": "По языку",
+    "targetActiveStatus": "По статусу активности",
+    "days": "Дни",
+    "language": "Код языка",
+    "selectLanguage": "Выберите язык",
+    "role": "Роль",
+    "selectRole": "Выберите роль",
+    "roleUser": "Пользователь",
+    "roleModerator": "Модератор",
+    "roleAdmin": "Администратор",
+    "roleSuperAdmin": "Супер Администратор",
+    "activeStatus": "Статус активности",
+    "selectActiveStatus": "Выберите статус",
+    "statusActive": "Активные пользователи",
+    "statusInactive": "Неактивные пользователи",
+    "activeDaysNote": "Пользователи, которые были активны за последние N дней",
+    "inactiveDaysNote": "Пользователи, которые не были активны N дней",
+    "newUsersDaysNote": "Пользователи, зарегистрированные за последние N дней",
+    "roleRequired": "Роль обязательна",
+    "activeStatusRequired": "Статус активности обязателен",
+    "scheduling": "Планирование",
+    "sendTime": "Время отправки",
+    "scheduleNote": "Оставьте пустым для немедленной отправки",
+    "send": "Отправить рассылку",
+    "progress": "Прогресс рассылки",
+    "sent": "Отправлено",
+    "errors": "Ошибки",
+    "id": "ID",
+    "target": "Цель",
+    "recipients": "Получатели",
+    "status": "Статус",
+    "created": "Создано",
+    "noBroadcasts": "Нет рассылок",
+    "noBroadcastsDesc": "Рассылки еще не отправлялись.",
+    "broadcastCreated": "Рассылка успешно создана",
+    "messageRequired": "Сообщение обязательно",
+    "daysRequired": "Количество дней обязательно для фильтра активных пользователей",
+    "languageRequired": "Код языка обязателен"
   }
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, BotUser } from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useI18n } from '../../contexts/I18nContext';
+import { getFullName, getInitials } from '../../utils/userDisplay';
 import { User, Shield, Ban, CheckCircle2, XCircle, Loader2, MoreVertical } from 'lucide-react';
 
 export const Users = () => {
@@ -115,20 +116,20 @@ export const Users = () => {
                     <td>
                       <div className="flex items-center gap-2 sm:gap-3">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs sm:text-sm font-semibold flex-shrink-0">
-                          {user.username?.[0]?.toUpperCase() || 'U'}
-                        </div>
+                          {getInitials(user)}
+      </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-medium truncate" style={{ color: 'var(--oneui-text)' }}>
-                            {user.username || `User ${user.id}`}
-                          </div>
-                          {user.username && (
+                            {getFullName(user) || `User ${user.id}`}
+                </div>
+                  {user.username && (
                             <div className="text-xs oneui-text-muted truncate">@{user.username}</div>
-                          )}
-                        </div>
-                      </div>
+                  )}
+                </div>
+              </div>
                     </td>
                     <td>
-                      {user.role && (
+              {user.role && (
                         <span className={`oneui-badge ${roleColor}`}>
                           {user.role.toUpperCase()}
                         </span>
@@ -139,14 +140,14 @@ export const Users = () => {
                         {isBlocked ? t('common.inactive') : t('common.active')}
                       </span>
                     </td>
-                    {isAdmin && (
+              {isAdmin && (
                       <td>
                         <button
                           onClick={() => toggleBlockStatus(user.id, isBlocked)}
-                          disabled={busyUserIds.includes(user.id)}
+                  disabled={busyUserIds.includes(user.id)}
                           className={`oneui-btn ${isBlocked ? 'oneui-btn-primary' : 'oneui-btn-secondary'} flex items-center gap-1 sm:gap-2`}
                           style={{ padding: '0.375rem 0.5rem', fontSize: '0.75rem' }}
-                        >
+              >
                           {busyUserIds.includes(user.id) ? (
                             <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                           ) : isBlocked ? (
@@ -162,7 +163,7 @@ export const Users = () => {
                           )}
                         </button>
                       </td>
-                    )}
+            )}
                   </tr>
                 );
               })}

@@ -1,76 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api, Service } from '../../api';
 import { Server, Play, Pause, RotateCw, AlertCircle } from 'lucide-react';
 
-type ServiceStatus = 'running' | 'stopped' | 'restarting';
-
-type Service = {
-  id: string;
-  name: string;
-  description: string;
-  status: ServiceStatus;
-  uptime: string;
-  memory: string;
-};
-
 export const Services = () => {
-  const [services, setServices] = useState<Service[]>([
-    {
-      id: '1',
-      name: 'Bot Core',
-      description: 'Main bot process and event handler',
-      status: 'running',
-      uptime: '5d 12h 34m',
-      memory: '245 MB',
-    },
-    {
-      id: '2',
-      name: 'Message Queue',
-      description: 'Asynchronous message processing',
-      status: 'running',
-      uptime: '5d 12h 34m',
-      memory: '128 MB',
-    },
-    {
-      id: '3',
-      name: 'Analytics Engine',
-      description: 'Real-time data processing',
-      status: 'running',
-      uptime: '5d 12h 34m',
-      memory: '312 MB',
-    },
-    {
-      id: '4',
-      name: 'Cache Service',
-      description: 'Redis-based caching layer',
-      status: 'stopped',
-      uptime: '0m',
-      memory: '0 MB',
-    },
-  ]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleServiceAction = (id: string, action: 'start' | 'stop' | 'restart') => {
-    setServices(services.map(s => {
-      if (s.id === id) {
-        if (action === 'start') return { ...s, status: 'running' as ServiceStatus };
-        if (action === 'stop') return { ...s, status: 'stopped' as ServiceStatus };
-        if (action === 'restart') {
-          setTimeout(() => {
-            setServices(prev => prev.map(ps =>
-              ps.id === id ? { ...ps, status: 'running' as ServiceStatus } : ps
-            ));
-          }, 2000);
-          return { ...s, status: 'restarting' as ServiceStatus };
-        }
-      }
-      return s;
-    }));
+  useEffect(() => {
+    loadServices();
+    const interval = setInterval(loadServices, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadServices = async () => {
+    try {
+      const data = await api.getServices();
+      setServices(data);
+    } catch (error) {
+      console.error('Error loading services:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleServiceAction = async (id: string, action: 'start' | 'stop' | 'restart') => {
+    try {
+      await api.serviceAction(id, action);
+      // Reload services to get updated status
+      await loadServices();
+    } catch (error: any) {
+      console.error('Error performing service action:', error);
+      alert(`Failed to ${action} service: ${error.message || error}`);
+    }
   };
 
   const runningCount = services.filter(s => s.status === 'running').length;
   const stoppedCount = services.filter(s => s.status === 'stopped').length;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="oneui-spinner"></div>
+      </div>
+    );
+  }
+
   return (
-    <div>
+      <div>
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--oneui-text)' }}>

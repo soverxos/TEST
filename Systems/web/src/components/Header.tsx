@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useI18n } from '../contexts/I18nContext';
+import { getFullName, getInitials } from '../utils/userDisplay';
 import { Bell, Search, Sun, Moon, User, LogOut, Menu, X, Globe, Settings } from 'lucide-react';
 
 type HeaderProps = {
@@ -87,8 +88,8 @@ export const Header = ({ onMenuToggle, isMobileMenuOpen }: HeaderProps) => {
   return (
     <header className="oneui-header" style={{ width: '100%', maxWidth: '100%' }}>
       <div className="oneui-header-left flex-1 min-w-0">
-        <button
-          onClick={onMenuToggle}
+            <button
+              onClick={onMenuToggle}
           className="oneui-btn-icon lg:hidden"
           aria-label="Toggle menu"
         >
@@ -125,7 +126,7 @@ export const Header = ({ onMenuToggle, isMobileMenuOpen }: HeaderProps) => {
             title="Change language"
           >
             <Globe className="w-5 h-5" />
-          </button>
+            </button>
 
           {showLangDropdown && (
             <>
@@ -157,25 +158,25 @@ export const Header = ({ onMenuToggle, isMobileMenuOpen }: HeaderProps) => {
                     {locale === loc && (
                       <span className="ml-auto text-indigo-600 dark:text-indigo-400">✓</span>
                     )}
-                  </div>
+              </div>
                 ))}
               </div>
             </>
           )}
-        </div>
+          </div>
 
         {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
+            <button
+              onClick={toggleTheme}
           className="oneui-btn-icon"
           title={t('header.switchTheme')}
-        >
-          {theme === 'dark' ? (
+            >
+              {theme === 'dark' ? (
             <Sun className="w-5 h-5" />
-          ) : (
+              ) : (
             <Moon className="w-5 h-5" />
-          )}
-        </button>
+              )}
+            </button>
 
         {/* Notifications */}
         <button className="oneui-btn-icon relative" title="Notifications">
@@ -185,33 +186,33 @@ export const Header = ({ onMenuToggle, isMobileMenuOpen }: HeaderProps) => {
 
         {/* User Menu */}
         <div className="oneui-dropdown" ref={userButtonRef}>
-          <button
+              <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
             className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
+              >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-              {profile?.username?.[0]?.toUpperCase() || 'U'}
+              {getInitials(profile)}
             </div>
             <div className="hidden sm:block text-left">
               <div className="text-xs sm:text-sm font-medium truncate max-w-[120px] lg:max-w-none" style={{ color: 'var(--oneui-text)' }}>
-                {profile?.username || 'User'}
+                {getFullName(profile)}
               </div>
               <div className="text-xs truncate max-w-[120px] lg:max-w-none" style={{ color: 'var(--oneui-text-muted)' }}>
                 {profile?.role || 'user'}
-              </div>
-            </div>
-          </button>
+                </div>
+                </div>
+              </button>
 
           {showUserDropdown && (
-            <>
-              <div
-                className="fixed inset-0 z-[90]"
+                <>
+                  <div
+                    className="fixed inset-0 z-[90]"
                 onClick={() => setShowUserDropdown(false)}
-              />
+                  />
               <div ref={userDropdownRef} className="oneui-dropdown-menu" style={{ right: 0, minWidth: '220px' }}>
                 <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--oneui-border)' }}>
                   <div className="text-sm font-medium" style={{ color: 'var(--oneui-text)' }}>
-                    {profile?.username || 'User'}
+                    {getFullName(profile)}
                   </div>
                   <div className="text-xs mt-1" style={{ color: 'var(--oneui-text-muted)' }}>
                     {profile?.role || 'user'}
@@ -225,11 +226,11 @@ export const Header = ({ onMenuToggle, isMobileMenuOpen }: HeaderProps) => {
                   <LogOut className="oneui-dropdown-item-icon" />
                   <span>{t('header.signOut')}</span>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
     </header>
   );
 };

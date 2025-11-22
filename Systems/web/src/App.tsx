@@ -57,23 +57,23 @@ const AppContent = () => {
         <h1 className="text-3xl font-bold mb-4" style={{ color: 'var(--oneui-text)' }}>SwiftDevBot</h1>
         <p className="oneui-text-muted mb-6">
           {t('auth.loginViaTelegram')} <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">/login</code>
-        </p>
+          </p>
         <p className="text-sm oneui-text-muted">
           {t('auth.loginLink')}
-        </p>
+          </p>
+        </div>
       </div>
-    </div>
   );
 };
 
 function App() {
   return (
     <I18nProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ThemeProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
     </I18nProvider>
   );
 }

@@ -19,11 +19,13 @@ export const Modules = () => {
 
   const loadModules = async () => {
     try {
-      const data = await api.getModules();
+      // For admin panel, include system modules
+      const data = await api.getModules(true);
       setModules(data || []);
     } catch (error) {
       console.error('Error loading modules:', error);
       setError(t('modules.errorToggle'));
+      setModules([]);
     } finally {
       setLoading(false);
     }
@@ -111,7 +113,7 @@ export const Modules = () => {
                     <span className={`oneui-badge ${isActive ? 'oneui-badge-success' : 'oneui-badge-danger'}`}>
                       {isActive ? t('common.active') : t('common.inactive')}
                     </span>
-                  </div>
+                </div>
                 </div>
                 <button className="oneui-btn-icon">
                   <MoreVertical className="w-4 h-4" />
@@ -147,7 +149,7 @@ export const Modules = () => {
                           <CheckCircle2 className="w-4 h-4" />
                           {t('modules.activate')}
                         </>
-                      )}
+              )}
                     </span>
                   )}
                 </button>

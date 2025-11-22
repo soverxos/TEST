@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useI18n } from '../../contexts/I18nContext';
+import { getFullName } from '../../utils/userDisplay';
 import { User, Shield, Save, CheckCircle2 } from 'lucide-react';
 
 export const Settings = () => {
@@ -20,7 +21,7 @@ export const Settings = () => {
   };
 
   return (
-    <div>
+      <div>
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--oneui-text)' }}>
@@ -34,14 +35,14 @@ export const Settings = () => {
         <div className="oneui-card">
           <div className="text-center">
             <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <User className="w-12 h-12 text-white" />
-            </div>
+            <User className="w-12 h-12 text-white" />
+          </div>
             <h3 className="text-xl font-bold mb-1" style={{ color: 'var(--oneui-text)' }}>
-              {profile?.username || 'User'}
+              {getFullName(profile)}
             </h3>
             <p className="oneui-text-muted text-sm mb-4 capitalize">{profile?.role || 'user'}</p>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full oneui-badge-danger">
-              <Shield className="w-4 h-4" />
+            <Shield className="w-4 h-4" />
               <span className="text-xs font-semibold">{profile?.role?.toUpperCase() || 'USER'}</span>
             </div>
           </div>
@@ -59,17 +60,17 @@ export const Settings = () => {
                   Username
                 </label>
                 <input
-                  type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                type="text"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   style={{
                     backgroundColor: 'var(--oneui-bg-alt)',
                     borderColor: 'var(--oneui-border)',
                     color: 'var(--oneui-text)',
                   }}
-                  placeholder="Enter your username"
-                />
+                placeholder="Enter your username"
+              />
               </div>
 
               <div className="flex items-center gap-3 pt-2">

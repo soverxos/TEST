@@ -23,7 +23,9 @@
     "online": "Онлайн",
     "offline": "Офлайн",
     "yes": "Так",
-    "no": "Ні"
+    "no": "Ні",
+    "never": "Ніколи",
+    "saving": "Збереження..."
   },
   "header": {
     "signOut": "Вийти",
@@ -31,7 +33,10 @@
   },
   "sidebar": {
     "home": "Головна",
+    "userMenu": "Користувач",
+    "missionControl": "Mission Control",
     "modules": "Модулі",
+    "modulesHub": "Мої модулі",
     "users": "Користувачі",
     "statistics": "Статистика",
     "logs": "Логи",
@@ -39,12 +44,193 @@
     "documentation": "Документація",
     "adminPanel": "Адміністрування",
     "coreConfig": "Конфігурація ядра",
+    "coreManagement": "Core Management",
     "services": "Сервіси",
-    "monitoring": "Моніторинг"
+    "monitoring": "Моніторинг",
+    "notifications": "Сповіщення",
+    "data": "Мої дані",
+    "developer": "API Ключі",
+    "terminal": "Консоль",
+    "security": "Безпека",
+    "support": "Підтримка",
+    "cronJobs": "Планувальник",
+    "securityOperations": "SOC",
+    "databaseData": "База даних",
+    "broadcastStudio": "Розсилки"
   },
   "home": {
     "title": "Ласкаво просимо до SwiftDevBot",
     "subtitle": "Моніторинг та керування операціями вашого бота в реальному часі",
+    "customize": "Налаштувати",
+    "addWidgets": "Додати віджети",
+    "noWidgets": "Немає активних віджетів. Додайте віджети для відображення інформації.",
+    "widgetSettings": "Налаштування віджетів",
+    "widgetSettingsDesc": "Виберіть віджети для відображення на головній сторінці",
+    "widget": {
+      "stats": {
+        "desc": "Відображає статистику бота (модулі, користувачі, взаємодії)"
+      },
+      "activity": {
+        "desc": "Показує останню активність в системі"
+      },
+      "systemHealth": {
+        "desc": "Відображає стан системи (CPU, пам'ять, мережа, сховище)"
+      },
+      "quickActions": {
+        "desc": "Швидкий доступ до основних розділів панелі"
+      },
+      "recentErrors": {
+        "desc": "Останні помилки з логів системи"
+      },
+      "topModules": {
+        "desc": "Топ-5 активних модулів"
+      },
+      "userStats": {
+        "desc": "Статистика користувачів (всього, нових, активних)"
+      },
+      "servicesStatus": {
+        "desc": "Статус системних сервісів"
+      },
+      "performance": {
+        "desc": "Метрики продуктивності (RPS, час відповіді, помилки)"
+      },
+      "announcements": {
+        "desc": "Системні оголошення та сповіщення"
+      },
+      "uptime": {
+        "desc": "Час роботи системи без перезавантаження"
+      },
+      "weather": {
+        "desc": "Поточна погода та прогноз"
+      },
+      "calendar": {
+        "desc": "Календар з подіями"
+      },
+      "notes": {
+        "desc": "Швидкі нотатки"
+      },
+      "tasks": {
+        "desc": "Список задач та справ"
+      },
+      "time": {
+        "desc": "Годинник у різних часових поясах"
+      },
+      "github": {
+        "desc": "Репозиторії GitHub"
+      },
+      "tools": {
+        "desc": "Корисні інструменти (калькулятор, конвертер, кодувальник)"
+      }
+    },
+    "quickActions": {
+      "myModules": "Мої модулі",
+      "myData": "Мої дані",
+      "apiKeys": "API Ключі",
+      "security": "Безпека",
+      "statistics": "Статистика",
+      "notifications": "Сповіщення",
+      "settings": "Налаштування",
+      "support": "Підтримка"
+    },
+    "noErrors": "Немає останніх помилок",
+    "noModules": "Немає доступних модулів",
+    "noServices": "Немає доступних сервісів",
+    "noAnnouncements": "Немає оголошень",
+    "userStats": {
+      "totalUsers": "Всього користувачів",
+      "newToday": "Нових сьогодні",
+      "active24h": "Активних (24ч)",
+      "growth": "Зріст"
+    },
+    "performance": {
+      "rps": "RPS",
+      "responseTime": "Час відповіді",
+      "errorRate": "Помилки",
+      "queueSize": "Черга"
+    },
+    "uptime": {
+      "days": "Днів",
+      "hours": "Годин",
+      "minutes": "Хвилин"
+    },
+    "announcements": {
+      "maintenance": "Планове обслуговування",
+      "maintenanceDesc": "Планове обслуговування системи заплановано на завтра о 2:00",
+      "update": "Оновлення системи",
+      "updateDesc": "До панелі управління додано нові функції"
+    },
+    "weather": {
+      "error": "Помилка завантаження погоди",
+      "noData": "Немає даних про погоду",
+      "humidity": "Вологість",
+      "wind": "Вітер",
+      "feelsLike": "Відчувається"
+    },
+    "calendar": {
+      "january": "Січень",
+      "february": "Лютий",
+      "march": "Березень",
+      "april": "Квітень",
+      "may": "Травень",
+      "june": "Червень",
+      "july": "Липень",
+      "august": "Серпень",
+      "september": "Вересень",
+      "october": "Жовтень",
+      "november": "Листопад",
+      "december": "Грудень",
+      "sun": "Нд",
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "upcoming": "Майбутні події"
+    },
+    "notes": {
+      "placeholder": "Додати нотатку...",
+      "noNotes": "Немає нотаток. Додайте першу нотатку!"
+    },
+    "tasks": {
+      "placeholder": "Додати задачу...",
+      "all": "Всі",
+      "active": "Активні",
+      "completed": "Виконані",
+      "noTasks": "Немає задач. Додайте першу задачу!",
+      "noFilteredTasks": "Задачі не знайдено",
+      "completed": "виконано",
+      "priority": {
+        "low": "Низький",
+        "medium": "Середній",
+        "high": "Високий"
+      }
+    },
+    "time": {
+      "otherZones": "Інші часові пояси"
+    },
+    "github": {
+      "title": "Репозиторії GitHub",
+      "usernamePlaceholder": "Ім'я користувача GitHub",
+      "load": "Завантажити репозиторії",
+      "error": "Помилка завантаження репозиторіїв",
+      "noRepos": "Репозиторії не знайдено",
+      "change": "Змінити",
+      "changeUser": "Змінити користувача"
+    },
+    "tools": {
+      "calculator": "Калькулятор",
+      "converter": "Конвертер",
+      "encoder": "Кодувальник",
+      "formatter": "Форматер",
+      "calculate": "Обчислити",
+      "result": "Результат",
+      "input": "Введення",
+      "output": "Виведення",
+      "encode": "Кодувати",
+      "decode": "Декодувати",
+      "formatterComingSoon": "Форматер скоро з'явиться"
+    },
     "activeModules": "Активні модулі",
     "totalUsers": "Всього користувачів",
     "todayInteractions": "Взаємодій сьогодні",
@@ -55,6 +241,18 @@
     "memory": "Пам'ять",
     "network": "Мережа",
     "storage": "Сховище"
+  },
+  "statistics": {
+    "title": "Статистика",
+    "subtitle": "Аналітика та метрики в реальному часі",
+    "messagesToday": "Повідомлень сьогодні",
+    "totalUsers": "Всього користувачів",
+    "activeModules": "Активні модулі",
+    "totalModules": "Всього модулів",
+    "vsPrevious": "до попереднього",
+    "activityChart": "Графік активності",
+    "hourlyActivity": "Активність за годинами",
+    "trends": "Тренди"
   },
   "modules": {
     "title": "Модулі бота",
@@ -92,6 +290,283 @@
     "saveError": "Не вдалося зберегти зміни",
     "networkError": "Помилка мережі. Будь ласка, перевірте підключення.",
     "unknownError": "Сталася невідома помилка"
+  },
+  "userDashboard": {
+    "welcome": "Ласкаво просимо, {name}!",
+    "subtitle": "Центр керування вашою взаємодією з ботом",
+    "accountActive": "Активний",
+    "quickActions": "Швидкі дії",
+    "myModules": "Мої модулі",
+    "myData": "Мої дані",
+    "apiKeys": "API Ключі",
+    "security": "Безпека",
+    "activeModules": "Активні модулі",
+    "totalCommands": "Команд сьогодні",
+    "storageUsed": "Використано місця",
+    "recentActivity": "Остання активність",
+    "announcements": "Оголошення",
+    "announcement": {
+      "newFeatures": "Нові можливості",
+      "newFeaturesDesc": "Додано нові функції для покращення вашого досвіду"
+    },
+    "activity": {
+      "command": "Виконано команду",
+      "fileUpload": "Завантажено файл",
+      "settings": "Змінено налаштування",
+      "settingsChanged": "Налаштування профілю"
+    }
+  },
+  "modulesHub": {
+    "title": "Мої модулі",
+    "subtitle": "Керування доступними сервісами",
+    "active": "Активний",
+    "notConfigured": "Не налаштовано",
+    "requiresSubscription": "Потребує підписки",
+    "open": "Відкрити",
+    "configure": "Налаштувати",
+    "noModules": "Модулі не знайдено",
+    "noModulesDesc": "У вас поки немає встановлених модулів. Модулі можна встановити через CLI команду 'sdb module create' або додати вручну в папку Modules/."
+  },
+  "security": {
+    "title": "Безпека",
+    "subtitle": "Керування безпекою акаунта",
+    "cloudPassword": "Хмарний пароль",
+    "changePassword": "Змінити пароль",
+    "activeSessions": "Активні сесії",
+    "sessionHistory": "Журнал доступу",
+    "terminateAll": "Завершити всі сеанси",
+    "terminateSession": "Завершити сеанс",
+    "device": "Пристрій",
+    "location": "Місцезнаходження",
+    "lastActivity": "Остання активність",
+    "currentSession": "Поточна сесія",
+    "noSessions": "Немає активних сесій",
+    "confirmTerminateAll": "Завершити всі сесії крім поточної?",
+    "passwordsDoNotMatch": "Паролі не співпадають",
+    "passwordTooShort": "Пароль повинен бути не менше 8 символів",
+    "passwordChanged": "Пароль успішно змінено"
+  },
+  "notifications": {
+    "title": "Сповіщення",
+    "subtitle": "Керування сповіщеннями",
+    "channels": "Канали доставки",
+    "telegram": "Telegram",
+    "email": "Email",
+    "push": "Push у браузері",
+    "types": "Типи сповіщень",
+    "news": "Новини",
+    "security": "Безпека",
+    "tasks": "Завершення завдань",
+    "marketing": "Маркетинг",
+    "doNotDisturb": "Не турбувати",
+    "schedule": "Розклад"
+  },
+  "data": {
+    "title": "Мої дані",
+    "subtitle": "Керування вашими даними",
+    "commandHistory": "Історія запитів",
+    "uploadedFiles": "Завантажені файли",
+    "exportData": "Експорт даних",
+    "downloadArchive": "Завантажити архів",
+    "privacy": "Приватність",
+    "clearHistory": "Очистити історію",
+    "deleteAccount": "Видалити акаунт",
+    "command": "Команда",
+    "date": "Дата",
+    "status": "Статус",
+    "fileName": "Ім'я файлу",
+    "size": "Розмір",
+    "uploadDate": "Дата завантаження",
+    "download": "Завантажити",
+    "delete": "Видалити",
+    "noCommandHistory": "Історія команд порожня",
+    "noFiles": "Немає завантажених файлів"
+  },
+  "support": {
+    "title": "Підтримка",
+    "subtitle": "Отримайте допомогу та підтримку",
+    "createTicket": "Створити тікет",
+    "myTickets": "Мої звернення",
+    "faq": "Часті питання",
+    "subject": "Тема",
+    "message": "Повідомлення",
+    "submit": "Відправити",
+    "ticketId": "ID тікета",
+    "status": "Статус",
+    "created": "Створено",
+    "updated": "Оновлено",
+    "open": "Відкрито",
+    "closed": "Закрито",
+    "pending": "В очікуванні",
+    "noTickets": "Немає створених тікетів",
+    "ticketCreated": "Тікет успішно створено"
+  },
+  "developer": {
+    "title": "API Ключі",
+    "subtitle": "Керування персональними токенами доступу",
+    "generateToken": "Створити токен",
+    "myTokens": "Мої токени",
+    "tokenName": "Назва",
+    "created": "Створено",
+    "lastUsed": "Останнє використання",
+    "actions": "Дії",
+    "copy": "Копіювати",
+    "revoke": "Відкликати",
+    "tokenValue": "Значення токена",
+    "warning": "Увага: токен буде показано лише один раз!",
+    "apiDocs": "Документація API",
+    "openDocs": "Відкрити Swagger",
+    "noTokens": "Немає створених токенів",
+    "confirmRevoke": "Відкликати цей токен?",
+    "copyToken": "Копіювати токен",
+    "revokeToken": "Відкликати токен"
+  },
+  "terminal": {
+    "title": "Консоль команд",
+    "subtitle": "Виконуйте команди бота прямо в браузері",
+    "placeholder": "Введіть команду (наприклад, /start, /help)...",
+    "execute": "Виконати",
+    "clear": "Очистити",
+    "history": "Історія команд",
+    "noHistory": "Історія команд порожня"
+  },
+  "cronJobs": {
+    "title": "Планувальник завдань",
+    "subtitle": "Перегляд та керування запланованими завданнями",
+    "scheduledJobs": "Заплановані завдання",
+    "jobName": "Назва завдання",
+    "function": "Функція",
+    "trigger": "Тригер",
+    "nextRun": "Наступний запуск",
+    "noJobs": "Немає запланованих завдань",
+    "noJobsDesc": "На даний момент немає запланованих завдань.",
+    "never": "Ніколи"
+  },
+  "soc": {
+    "title": "Security Operations Center",
+    "subtitle": "Моніторинг та керування подіями безпеки, контролем доступу та загрозами",
+    "auditLogs": "Журнал аудиту",
+    "accessControl": "Контроль доступу",
+    "statistics": "Статистика",
+    "filters": "Фільтри",
+    "moduleName": "Назва модуля",
+    "filterByModule": "Фільтр по модулю...",
+    "eventType": "Тип події",
+    "severity": "Рівень серйозності",
+    "allTypes": "Всі типи",
+    "allSeverities": "Всі рівні",
+    "timestamp": "Час",
+    "module": "Модуль",
+    "user": "Користувач",
+    "ip": "IP адреса",
+    "status": "Статус",
+    "noLogs": "Журнал аудиту порожній",
+    "noLogsDesc": "Немає подій безпеки, що відповідають вашим фільтрам.",
+    "apiKeys": "API Ключі",
+    "noApiKeys": "Немає API ключів",
+    "noApiKeysDesc": "API ключі не налаштовані. Використовуйте CLI для створення ключів.",
+    "keyName": "Назва ключа",
+    "permissions": "Права",
+    "created": "Створено",
+    "expires": "Закінчується",
+    "lastUsed": "Останнє використання",
+    "usageCount": "Кількість використань",
+    "totalEvents": "Всього подій",
+    "violations": "Порушення",
+    "eventTypes": "Типів подій",
+    "modules": "Модулів",
+    "eventsByType": "Події за типами",
+    "eventsBySeverity": "Події за серйозністю",
+    "count": "Кількість",
+    "noStats": "Статистика недоступна"
+  },
+  "database": {
+    "title": "База даних та дані",
+    "subtitle": "SQL Runner, Міграції та Управління кешем",
+    "sqlRunner": "SQL Runner",
+    "migrations": "Міграції",
+    "cache": "Кеш",
+    "cacheExplorer": "Перегляд кешу",
+    "query": "SQL Запит (тільки SELECT)",
+    "sqlNote": "Тільки SELECT запити дозволені для безпеки.",
+    "execute": "Виконати",
+    "results": "Результати",
+    "rows": "рядків",
+    "revision": "Ревізія",
+    "description": "Опис",
+    "status": "Статус",
+    "current": "Поточна",
+    "pending": "Очікує",
+    "upgrade": "Оновити",
+    "downgrade": "Відкотити",
+    "confirmMigration": "Виконати міграцію?",
+    "noMigrations": "Міграції не знайдено",
+    "searchPattern": "Паттерн пошуку (наприклад, user:* або *)...",
+    "search": "Пошук",
+    "key": "Ключ",
+    "ttl": "TTL",
+    "noExpiry": "Без терміну",
+    "noCacheKeys": "Ключі кешу не знайдено",
+    "noCacheKeysDesc": "Немає ключів, що відповідають вашому паттерну пошуку.",
+    "flushCache": "Очистити кеш",
+    "confirmFlushCache": "Очистити весь кеш? Цю дію не можна скасувати.",
+    "cacheFlushed": "Кеш успішно очищено"
+  },
+  "broadcast": {
+    "title": "Broadcast Studio",
+    "subtitle": "Створення та відправка повідомлень користувачам",
+    "create": "Створити розсилку",
+    "history": "Історія",
+    "messageEditor": "Редактор повідомлень",
+    "message": "Повідомлення",
+    "messagePlaceholder": "Введіть ваше повідомлення тут...",
+    "messageNote": "Підтримується форматування Markdown. Використовуйте /help для керівництва з форматування.",
+    "targeting": "Цільова аудиторія",
+    "targetType": "Тип цільової аудиторії",
+    "targetAll": "Всі користувачі",
+    "targetAdmins": "Тільки адміністратори",
+    "targetRole": "За роллю",
+    "targetActive": "Активні користувачі (останні N днів)",
+    "targetInactive": "Неактивні користувачі (немає активності N днів)",
+    "targetNewUsers": "Нові користувачі (зареєстровані за N днів)",
+    "targetLanguage": "За мовою",
+    "targetActiveStatus": "За статусом активності",
+    "days": "Дні",
+    "language": "Код мови",
+    "selectLanguage": "Виберіть мову",
+    "role": "Роль",
+    "selectRole": "Виберіть роль",
+    "roleUser": "Користувач",
+    "roleModerator": "Модератор",
+    "roleAdmin": "Адміністратор",
+    "roleSuperAdmin": "Супер Адміністратор",
+    "activeStatus": "Статус активності",
+    "selectActiveStatus": "Виберіть статус",
+    "statusActive": "Активні користувачі",
+    "statusInactive": "Неактивні користувачі",
+    "activeDaysNote": "Користувачі, які були активні за останні N днів",
+    "inactiveDaysNote": "Користувачі, які не були активні N днів",
+    "newUsersDaysNote": "Користувачі, зареєстровані за останні N днів",
+    "roleRequired": "Роль обов'язкова",
+    "activeStatusRequired": "Статус активності обов'язковий",
+    "scheduling": "Планування",
+    "sendTime": "Час відправки",
+    "scheduleNote": "Залиште порожнім для негайної відправки",
+    "send": "Відправити розсилку",
+    "progress": "Прогрес розсилки",
+    "sent": "Відправлено",
+    "errors": "Помилки",
+    "id": "ID",
+    "target": "Мета",
+    "recipients": "Отримувачі",
+    "status": "Статус",
+    "created": "Створено",
+    "noBroadcasts": "Немає розсилок",
+    "noBroadcastsDesc": "Розсилки ще не відправлялися.",
+    "broadcastCreated": "Розсилку успішно створено",
+    "messageRequired": "Повідомлення обов'язкове",
+    "daysRequired": "Кількість днів обов'язкова для фільтра активних користувачів",
+    "languageRequired": "Код мови обов'язковий"
   }
 }
 

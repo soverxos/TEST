@@ -39,6 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(response.user);
       const userProfile: Profile = {
         username: response.user.username,
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
         role: response.user.role,
       };
       setProfile(userProfile);
@@ -117,16 +119,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Check for saved session
     const savedUser = localStorage.getItem('sdb_user');
+    const savedToken = localStorage.getItem('sdb_token');
     const cloudPasswordVerified = localStorage.getItem('sdb_cloud_password_verified');
 
     if (savedUser && cloudPasswordVerified === 'true') {
       try {
         const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setProfile({
-          username: userData.username,
-          role: userData.role,
-        });
+        
+        // If first_name or last_name are missing, try to refresh user data from API
+        if ((!userData.first_name && !userData.last_name) && savedToken) {
+          // Try to refresh user data
+          api.loginWithToken(savedToken)
+            .then(response => {
+              setUser(response.user);
+              setProfile({
+                username: response.user.username,
+                first_name: response.user.first_name,
+                last_name: response.user.last_name,
+                role: response.user.role,
+              });
+              localStorage.setItem('sdb_user', JSON.stringify(response.user));
+            })
+            .catch(() => {
+              // If refresh fails, use saved data
+              setUser(userData);
+              setProfile({
+                username: userData.username,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                role: userData.role,
+              });
+            });
+        } else {
+          setUser(userData);
+          setProfile({
+            username: userData.username,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            role: userData.role,
+          });
+        }
+        
         setCloudPasswordVerified(true);
 
         // Check cloud password setup status
@@ -151,11 +184,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // User exists but cloud password not verified - need to verify
       try {
         const userData = JSON.parse(savedUser);
-        setUser(userData);
-        setProfile({
-          username: userData.username,
-          role: userData.role,
-        });
+        
+        // If first_name or last_name are missing, try to refresh user data from API
+        if ((!userData.first_name && !userData.last_name) && savedToken) {
+          // Try to refresh user data
+          api.loginWithToken(savedToken)
+            .then(response => {
+              setUser(response.user);
+              setProfile({
+                username: response.user.username,
+                first_name: response.user.first_name,
+                last_name: response.user.last_name,
+                role: response.user.role,
+              });
+              localStorage.setItem('sdb_user', JSON.stringify(response.user));
+            })
+            .catch(() => {
+              // If refresh fails, use saved data
+              setUser(userData);
+              setProfile({
+                username: userData.username,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                role: userData.role,
+              });
+            });
+        } else {
+          setUser(userData);
+          setProfile({
+            username: userData.username,
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            role: userData.role,
+          });
+        }
 
         // Check cloud password setup status
         api.checkCloudPasswordSetup()

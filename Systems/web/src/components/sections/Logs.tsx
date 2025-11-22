@@ -10,11 +10,17 @@ export const Logs = () => {
 
   useEffect(() => {
     loadLogs();
+    // Set up polling for live updates
+    const interval = setInterval(() => {
+      loadLogs();
+    }, 5000); // Update every 5 seconds
+    
+    return () => clearInterval(interval);
   }, [filter]);
 
   const loadLogs = async () => {
     try {
-      const data = await api.getLogs(50, filter === 'all' ? undefined : filter);
+      const data = await api.streamLogs(100, filter === 'all' ? undefined : filter);
       setLogs(data || []);
     } catch (error) {
       console.error('Error loading logs:', error);
