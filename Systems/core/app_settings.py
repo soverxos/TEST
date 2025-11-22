@@ -424,15 +424,20 @@ def load_app_settings() -> AppSettings:
     _loaded_settings_cache = final_settings
     return final_settings
 
-try:
-    settings: AppSettings = load_app_settings()
-except (ImportError, ValueError) as e: 
-    print(f"CRITICAL ERROR during SDB settings load/validation: {e}", file=sys.stderr)
-    if hasattr(global_logger, 'opt') and callable(global_logger.opt): 
-        global_logger.opt(exception=True).critical(f"КРИТИЧЕСКАЯ ОШИБКА Pydantic/SDB при валидации или загрузке настроек: {e}")
-    sys.exit(1)
-except Exception as e:
-    print(f"UNEXPECTED CRITICAL ERROR during initial settings load: {e}", file=sys.stderr)
-    if hasattr(global_logger, 'opt') and callable(global_logger.opt):
-        global_logger.opt(exception=True).critical(f"НЕПРЕДВИДЕННАЯ КРИТИЧЕСКАЯ ОШИБКА при первоначальной загрузке настроек: {e}")
-    sys.exit(1)
+autoload_settings = os.environ.get("SDB_SKIP_APP_SETTINGS_AUTOLOAD", "false").lower() != "true"
+settings: Optional[AppSettings]
+if autoload_settings:
+    try:
+        settings = load_app_settings()
+    except (ImportError, ValueError) as e:
+        print(f"CRITICAL ERROR during SDB settings load/validation: {e}", file=sys.stderr)
+        if hasattr(global_logger, 'opt') and callable(global_logger.opt):
+            global_logger.opt(exception=True).critical(f"КРИТИЧЕСКАЯ ОШИБКА Pydantic/SDB при валидации или загрузке настроек: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"UNEXPECTED CRITICAL ERROR during initial settings load: {e}", file=sys.stderr)
+        if hasattr(global_logger, 'opt') and callable(global_logger.opt):
+            global_logger.opt(exception=True).critical(f"НЕПРЕДВИДЕННАЯ КРИТИЧЕСКАЯ ОШИБКА при первоначальной загрузке настроек: {e}")
+        sys.exit(1)
+else:
+    settings = None

@@ -37,8 +37,14 @@ class TestHealthStatus:
         assert "timestamp" in status_dict
 
 
+@pytest.mark.anyio("asyncio")
 class TestHealthChecker:
     """Тесты для HealthChecker"""
+
+    @pytest.fixture
+    def anyio_backend(self):
+        """Используем asyncio backend для anyio"""
+        return "asyncio"
     
     @pytest.fixture
     def mock_services(self):
@@ -50,7 +56,7 @@ class TestHealthChecker:
         services.modules = MagicMock()
         return services
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_check_database_healthy(self, mock_services):
         """Тест проверки БД (здоровое состояние)"""
         checker = HealthChecker(mock_services)
@@ -66,7 +72,7 @@ class TestHealthChecker:
         assert status.status == "healthy"
         assert "База данных доступна" in status.message
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_check_database_unhealthy(self, mock_services):
         """Тест проверки БД (нездоровое состояние)"""
         checker = HealthChecker(mock_services)
@@ -78,7 +84,7 @@ class TestHealthChecker:
         assert status.status == "unhealthy"
         assert "Ошибка" in status.message
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_check_cache_healthy(self, mock_services):
         """Тест проверки кэша (здоровое состояние)"""
         checker = HealthChecker(mock_services)
@@ -92,7 +98,7 @@ class TestHealthChecker:
         assert status.status == "healthy"
         assert "Кэш работает" in status.message
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_check_cache_unavailable(self, mock_services):
         """Тест проверки кэша (недоступен)"""
         checker = HealthChecker(mock_services)
@@ -103,19 +109,37 @@ class TestHealthChecker:
         assert status.status == "unhealthy"
         assert "недоступен" in status.message.lower()
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_check_all(self, mock_services):
         """Тест проверки всех компонентов"""
         checker = HealthChecker(mock_services)
         
         # Мокаем все проверки как успешные
-        with patch.object(checker, 'check_database', return_value=HealthStatus("database", "healthy", "")), \
-             patch.object(checker, 'check_cache', return_value=HealthStatus("cache", "healthy", "")), \
-             patch.object(checker, 'check_telegram_api', return_value=HealthStatus("telegram_api", "healthy", "")), \
-             patch.object(checker, 'check_modules', return_value=HealthStatus("modules", "healthy", "")):
-            
+        with patch.object(checker, 'check_database', AsyncMock(return_value=HealthStatus("database", "healthy", ""))), \
+             patch.object(checker, 'check_cache', AsyncMock(return_value=HealthStatus("cache", "healthy", ""))), \
+             patch.object(checker, 'check_telegram_api', AsyncMock(return_value=HealthStatus("telegram_api", "healthy", ""))), \
+             patch.object(checker, 'check_modules', AsyncMock(return_value=HealthStatus("modules", "healthy", ""))):
+
             result = await checker.check_all()
             assert result["status"] == "healthy"
             assert "checks" in result
             assert len(result["checks"]) == 4
+
+    @pytest.mark.anyio
+    async def test_check_all_with_exceptions(self, mock_services):
+        """Проверяет, что ошибки преобразуются в статусы"""
+        checker = HealthChecker(mock_services)
+
+        with patch.object(checker, 'check_database', AsyncMock(return_value=HealthStatus("database", "healthy", ""))), \
+             patch.object(checker, 'check_cache', AsyncMock(side_effect=Exception("Cache boom"))), \
+             patch.object(checker, 'check_telegram_api', AsyncMock(return_value=HealthStatus("telegram_api", "healthy", ""))), \
+             patch.object(checker, 'check_modules', AsyncMock(return_value=HealthStatus("modules", "healthy", ""))):
+
+            result = await checker.check_all()
+
+            assert result["status"] == "unhealthy"
+            assert set(result["checks"].keys()) == {"database", "cache", "telegram_api", "modules"}
+            cache_check = result["checks"]["cache"]
+            assert cache_check["status"] == "unhealthy"
+            assert "Cache boom" in cache_check["message"]
 

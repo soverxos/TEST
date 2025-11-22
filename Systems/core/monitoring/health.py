@@ -225,31 +225,40 @@ class HealthChecker:
         Returns:
             Словарь с результатами всех проверок
         """
+        check_tasks = [
+            ("database", self.check_database()),
+            ("cache", self.check_cache()),
+            ("telegram_api", self.check_telegram_api()),
+            ("modules", self.check_modules()),
+        ]
+
         checks = await asyncio.gather(
-            self.check_database(),
-            self.check_cache(),
-            self.check_telegram_api(),
-            self.check_modules(),
+            *(task for _, task in check_tasks),
             return_exceptions=True
         )
-        
+
         results = {}
         overall_status = "healthy"
-        
-        for check in checks:
+
+        for (component_name, _), check in zip(check_tasks, checks):
             if isinstance(check, Exception):
-                self._logger.error(f"Health check exception: {check}")
-                continue
-            
+                self._logger.error(f"Health check exception for {component_name}: {check}")
+                check = HealthStatus(
+                    component_name,
+                    "unhealthy",
+                    f"Ошибка проверки {component_name}: {str(check)}",
+                    {"error": str(check)}
+                )
+
             if isinstance(check, HealthStatus):
-                results[check.name] = check.to_dict()
-                
+                results[component_name] = check.to_dict()
+
                 # Определяем общий статус
                 if check.status == "unhealthy":
                     overall_status = "unhealthy"
                 elif check.status == "degraded" and overall_status == "healthy":
                     overall_status = "degraded"
-        
+
         return {
             "status": overall_status,
             "timestamp": datetime.now().isoformat(),

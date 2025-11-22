@@ -20,16 +20,33 @@ from rich.panel import Panel
 # Импортируем функции для возможности моканья в тестах
 try:
     from Systems.cli.utils import get_settings_only_for_cli
-    from Systems.core.app_settings import PROJECT_ROOT_DIR, settings
 except ImportError:
     # Fallback для тестов
-    settings = None
     get_settings_only_for_cli = None
-    PROJECT_ROOT_DIR = Path.cwd()
+
+PROJECT_ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Создаем приложение для системных команд
 system_app = typer.Typer(help="Системные команды для SwiftDevBot.")
 console = Console()
+
+
+def _get_runtime_settings():
+    """Безопасно загружает полные настройки, выводя понятные ошибки."""
+    try:
+        from Systems.core.app_settings import settings as runtime_settings
+
+        return runtime_settings
+    except Exception as settings_error:
+        console.print(
+            Panel(
+                f"[bold red]Не удалось загрузить настройки:[/] {settings_error}\n"
+                "Убедитесь, что заполнены .env и Data/Config/core_settings.yaml.",
+                title="Ошибка загрузки настроек",
+                border_style="red",
+            )
+        )
+        raise typer.Exit(code=1)
 
 
 def _show_basic_system_info(settings):
@@ -104,7 +121,7 @@ def update_cmd(
 ):
     """Обновление системы до последней версии."""
     try:
-        settings = settings  # Настройки уже загружены
+        settings = _get_runtime_settings()
         root_dir = PROJECT_ROOT_DIR
 
         console.print(
@@ -272,7 +289,7 @@ def rollback_cmd(
 ):
     """Откат системы к предыдущей версии из резервной копии."""
     try:
-        settings = settings  # Настройки уже загружены
+        settings = _get_runtime_settings()
         root_dir = PROJECT_ROOT_DIR
 
         # Поиск резервной копии
